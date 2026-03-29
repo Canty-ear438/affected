@@ -140,3 +140,88 @@ impl Resolver for CargoResolver {
         ]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_cargo_workspace() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\"crates/*\"]\n",
+        )
+        .unwrap();
+
+        assert!(CargoResolver.detect(dir.path()));
+    }
+
+    #[test]
+    fn test_detect_no_workspace() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"solo\"\n",
+        )
+        .unwrap();
+
+        assert!(!CargoResolver.detect(dir.path()));
+    }
+
+    #[test]
+    fn test_detect_no_cargo_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!CargoResolver.detect(dir.path()));
+    }
+
+    #[test]
+    fn test_test_command_format() {
+        let cmd = CargoResolver.test_command(&PackageId("my-crate".into()));
+        assert_eq!(cmd, vec!["cargo", "test", "-p", "my-crate"]);
+    }
+
+    #[test]
+    fn test_resolve_on_self() {
+        // Test resolving the `affected` project itself
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+
+        if !root.join("Cargo.toml").exists() {
+            return; // Skip if not run from the workspace
+        }
+
+        let graph = CargoResolver.resolve(root).unwrap();
+        assert!(graph.packages.len() >= 2);
+        assert!(graph.packages.contains_key(&PackageId("affected-core".into())));
+        assert!(graph.packages.contains_key(&PackageId("affected-cli".into())));
+        // affected-cli depends on affected-core
+        assert!(graph.edges.contains(&(
+            PackageId("affected-cli".into()),
+            PackageId("affected-core".into()),
+        )));
+    }
+
+    #[test]
+    fn test_package_for_file_in_workspace() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap();
+
+        if !root.join("Cargo.toml").exists() {
+            return;
+        }
+
+        let graph = CargoResolver.resolve(root).unwrap();
+        let result = CargoResolver.package_for_file(
+            &graph,
+            &PathBuf::from("crates/affected-core/src/lib.rs"),
+        );
+        assert_eq!(result, Some(PackageId("affected-core".into())));
+    }
+}

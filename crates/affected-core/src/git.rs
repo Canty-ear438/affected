@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use git2::Repository;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use tracing::debug;
 
 pub struct GitDiff {
     pub changed_files: Vec<PathBuf>,
@@ -17,9 +18,13 @@ pub fn changed_files(repo_path: &Path, base_ref: &str) -> Result<GitDiff> {
         .context("Bare repositories are not supported")?
         .to_path_buf();
 
+    debug!("Found git repository at {}", repo_root.display());
+
     let base_obj = repo
         .revparse_single(base_ref)
         .with_context(|| format!("Could not resolve base ref '{base_ref}'"))?;
+
+    debug!("Resolved base ref '{}' to {}", base_ref, base_obj.id());
 
     let base_tree = base_obj
         .peel_to_tree()
@@ -63,8 +68,38 @@ pub fn changed_files(repo_path: &Path, base_ref: &str) -> Result<GitDiff> {
     let mut changed_files: Vec<PathBuf> = files.into_iter().collect();
     changed_files.sort();
 
+    debug!("Detected {} changed files", changed_files.len());
+
     Ok(GitDiff {
         changed_files,
         repo_root,
     })
+}
+
+/// Compute the merge-base between HEAD and the given branch.
+/// Returns the commit SHA as a string. Used when `--merge-base` is passed.
+pub fn merge_base(repo_path: &Path, branch: &str) -> Result<String> {
+    let repo = Repository::discover(repo_path).context("Not a git repository")?;
+
+    debug!("Computing merge-base between HEAD and '{}'", branch);
+
+    let head_oid = repo
+        .head()
+        .context("Could not get HEAD")?
+        .target()
+        .context("HEAD is not a direct reference")?;
+
+    let branch_obj = repo
+        .revparse_single(branch)
+        .with_context(|| format!("Could not resolve branch '{branch}'"))?;
+    let branch_oid = branch_obj.id();
+
+    let merge_base_oid = repo
+        .merge_base(head_oid, branch_oid)
+        .with_context(|| format!("Could not find merge-base between HEAD and '{branch}'"))?;
+
+    let sha = merge_base_oid.to_string();
+    debug!("Merge-base resolved to {}", sha);
+
+    Ok(sha)
 }

@@ -1,0 +1,15 @@
+# .affected.toml — optional configuration for the `affected` CLI
+#
+# Place this file in your project root to customize behavior.
+
+# Custom test commands per ecosystem.
+# Use {package} as a placeholder for the package name.
+[test]
+# cargo = "cargo nextest run -p {package}"
+# npm = "pnpm run test --filter {package}"
+# go = "go test ./{package}/..."
+# python = "python -m pytest {package}"
+
+# File patterns to ignore when computing affected packages.
+# Changes to these files will never trigger tests.
+# ignore = ["*.md", "docs/**", "*.txt", ".github/**"]

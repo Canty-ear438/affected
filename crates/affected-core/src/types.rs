@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
@@ -35,12 +35,15 @@ pub struct ProjectGraph {
 }
 
 /// What kind of ecosystem was detected.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum Ecosystem {
     Cargo,
     Npm,
     Go,
     Python,
+    Yarn,
+    Maven,
+    Gradle,
 }
 
 impl fmt::Display for Ecosystem {
@@ -50,8 +53,26 @@ impl fmt::Display for Ecosystem {
             Ecosystem::Npm => write!(f, "npm"),
             Ecosystem::Go => write!(f, "go"),
             Ecosystem::Python => write!(f, "python"),
+            Ecosystem::Yarn => write!(f, "yarn"),
+            Ecosystem::Maven => write!(f, "maven"),
+            Ecosystem::Gradle => write!(f, "gradle"),
         }
     }
+}
+
+/// An explanation of why a package was affected.
+#[derive(Debug, Serialize)]
+pub struct ExplainEntry {
+    pub package: String,
+    pub reason: ExplainReason,
+}
+
+/// The reason a package is affected: either directly changed or transitively affected.
+#[derive(Debug, Serialize)]
+#[serde(tag = "type")]
+pub enum ExplainReason {
+    DirectlyChanged { files: Vec<String> },
+    TransitivelyAffected { chain: Vec<String> },
 }
 
 /// The result of the "affected" computation.
@@ -61,4 +82,40 @@ pub struct AffectedResult {
     pub base: String,
     pub changed_files: usize,
     pub total_packages: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub explanations: Option<Vec<ExplainEntry>>,
+}
+
+/// A single test result in JSON output format.
+#[derive(Debug, Serialize)]
+pub struct TestResultJson {
+    pub package: String,
+    pub success: bool,
+    pub duration_ms: u64,
+    pub exit_code: Option<i32>,
+}
+
+/// Summary of test results in JSON output format.
+#[derive(Debug, Serialize)]
+pub struct TestSummaryJson {
+    pub passed: usize,
+    pub failed: usize,
+    pub total: usize,
+    pub duration_ms: u64,
+}
+
+/// Full JSON output for test results.
+#[derive(Debug, Serialize)]
+pub struct TestOutputJson {
+    pub affected: Vec<String>,
+    pub results: Vec<TestResultJson>,
+    pub summary: TestSummaryJson,
+}
+
+/// Per-package configuration from `.affected.toml`.
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct PackageConfig {
+    pub test: Option<String>,
+    pub timeout: Option<u64>,
+    pub skip: Option<bool>,
 }

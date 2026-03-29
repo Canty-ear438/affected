@@ -1,12 +1,16 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::resolvers::{file_to_package, Resolver};
 use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 
-pub struct NpmResolver;
+/// YarnResolver detects Yarn Berry (v2/v3/v4) workspaces via `.yarnrc.yml`.
+///
+/// Parsing is the same as npm (package.json workspaces) but test commands use `yarn`.
+/// Detection: `.yarnrc.yml` exists at root (takes priority over NpmResolver).
+pub struct YarnResolver;
 
 #[derive(Deserialize)]
 struct RootPackageJson {
@@ -29,27 +33,24 @@ struct PackageJson {
     dev_dependencies: Option<HashMap<String, String>>,
 }
 
-impl Resolver for NpmResolver {
+impl Resolver for YarnResolver {
     fn ecosystem(&self) -> Ecosystem {
-        Ecosystem::Npm
+        Ecosystem::Yarn
     }
 
     fn detect(&self, root: &Path) -> bool {
-        if root.join("pnpm-workspace.yaml").exists() {
-            return true;
-        }
-        let pkg = root.join("package.json");
-        if !pkg.exists() {
-            return false;
-        }
-        std::fs::read_to_string(&pkg)
-            .map(|c| c.contains("\"workspaces\""))
-            .unwrap_or(false)
+        root.join(".yarnrc.yml").exists()
     }
 
     fn resolve(&self, root: &Path) -> Result<ProjectGraph> {
         let workspace_globs = self.find_workspace_globs(root)?;
         let pkg_dirs = self.expand_globs(root, &workspace_globs)?;
+
+        tracing::debug!(
+            "Yarn: found {} workspace globs, {} package directories",
+            workspace_globs.len(),
+            pkg_dirs.len()
+        );
 
         // Parse all workspace packages
         let mut packages = HashMap::new();
@@ -70,6 +71,8 @@ impl Resolver for NpmResolver {
                 Some(n) => n.clone(),
                 None => continue,
             };
+
+            tracing::debug!("Yarn: discovered package '{}'", name);
 
             let pkg_id = PackageId(name.clone());
             name_to_id.insert(name.clone(), pkg_id.clone());
@@ -135,57 +138,21 @@ impl Resolver for NpmResolver {
     }
 
     fn test_command(&self, package_id: &PackageId) -> Vec<String> {
-        // Default to npm; users can override via .affected.toml
         vec![
-            "npm".into(),
-            "test".into(),
-            "--workspace".into(),
+            "yarn".into(),
+            "workspace".into(),
             package_id.0.clone(),
+            "run".into(),
+            "test".into(),
         ]
     }
 }
 
-impl NpmResolver {
+impl YarnResolver {
     fn find_workspace_globs(&self, root: &Path) -> Result<Vec<String>> {
-        // Try pnpm-workspace.yaml first
-        let pnpm_path = root.join("pnpm-workspace.yaml");
-        if pnpm_path.exists() {
-            let content = std::fs::read_to_string(&pnpm_path)?;
-            // Simple YAML parsing for the packages field
-            // pnpm-workspace.yaml is typically:
-            //   packages:
-            //     - 'packages/*'
-            //     - 'apps/*'
-            let mut globs = Vec::new();
-            let mut in_packages = false;
-            for line in content.lines() {
-                let trimmed = line.trim();
-                if trimmed == "packages:" {
-                    in_packages = true;
-                    continue;
-                }
-                if in_packages {
-                    if trimmed.starts_with("- ") {
-                        let glob = trimmed
-                            .trim_start_matches("- ")
-                            .trim_matches('\'')
-                            .trim_matches('"')
-                            .to_string();
-                        globs.push(glob);
-                    } else if !trimmed.is_empty() {
-                        break;
-                    }
-                }
-            }
-            if !globs.is_empty() {
-                return Ok(globs);
-            }
-        }
-
-        // Fall back to package.json workspaces
         let pkg_path = root.join("package.json");
         let content = std::fs::read_to_string(&pkg_path)
-            .context("No package.json found")?;
+            .context("No package.json found for Yarn workspace")?;
         let root_pkg: RootPackageJson = serde_json::from_str(&content)
             .context("Failed to parse root package.json")?;
 
@@ -196,7 +163,11 @@ impl NpmResolver {
         }
     }
 
-    pub fn expand_globs(&self, root: &Path, globs: &[String]) -> Result<Vec<PathBuf>> {
+    fn expand_globs(
+        &self,
+        root: &Path,
+        globs: &[String],
+    ) -> Result<Vec<std::path::PathBuf>> {
         let mut dirs = Vec::new();
 
         for pattern in globs {
@@ -223,7 +194,14 @@ impl NpmResolver {
 mod tests {
     use super::*;
 
-    fn create_npm_workspace(dir: &std::path::Path) {
+    fn create_yarn_workspace(dir: &std::path::Path) {
+        // .yarnrc.yml to mark it as a Yarn Berry project
+        std::fs::write(
+            dir.join(".yarnrc.yml"),
+            "nodeLinker: node-modules\nyarnPath: .yarn/releases/yarn-4.0.0.cjs\n",
+        )
+        .unwrap();
+
         // Root package.json with workspaces
         std::fs::write(
             dir.join("package.json"),
@@ -231,7 +209,7 @@ mod tests {
         )
         .unwrap();
 
-        // Package A
+        // Package A depends on Package B
         std::fs::create_dir_all(dir.join("packages/pkg-a")).unwrap();
         std::fs::write(
             dir.join("packages/pkg-a/package.json"),
@@ -249,46 +227,35 @@ mod tests {
     }
 
     #[test]
-    fn test_detect_npm_workspace() {
+    fn test_detect_yarn_workspace() {
         let dir = tempfile::tempdir().unwrap();
-        create_npm_workspace(dir.path());
-        assert!(NpmResolver.detect(dir.path()));
+        create_yarn_workspace(dir.path());
+        assert!(YarnResolver.detect(dir.path()));
     }
 
     #[test]
-    fn test_detect_pnpm_workspace() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir.path().join("pnpm-workspace.yaml"),
-            "packages:\n  - 'packages/*'\n",
-        )
-        .unwrap();
-        assert!(NpmResolver.detect(dir.path()));
-    }
-
-    #[test]
-    fn test_detect_no_workspaces() {
+    fn test_detect_no_yarnrc() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(
             dir.path().join("package.json"),
-            r#"{"name": "solo"}"#,
+            r#"{"name": "root", "workspaces": ["packages/*"]}"#,
         )
         .unwrap();
-        assert!(!NpmResolver.detect(dir.path()));
+        assert!(!YarnResolver.detect(dir.path()));
     }
 
     #[test]
     fn test_detect_empty_dir() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(!NpmResolver.detect(dir.path()));
+        assert!(!YarnResolver.detect(dir.path()));
     }
 
     #[test]
-    fn test_resolve_npm_workspace() {
+    fn test_resolve_yarn_workspace() {
         let dir = tempfile::tempdir().unwrap();
-        create_npm_workspace(dir.path());
+        create_yarn_workspace(dir.path());
 
-        let graph = NpmResolver.resolve(dir.path()).unwrap();
+        let graph = YarnResolver.resolve(dir.path()).unwrap();
         assert_eq!(graph.packages.len(), 2);
         assert!(graph.packages.contains_key(&PackageId("@scope/pkg-a".into())));
         assert!(graph.packages.contains_key(&PackageId("@scope/pkg-b".into())));
@@ -301,12 +268,18 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_pnpm_workspace() {
+    fn test_resolve_yarn_no_edges_when_no_internal_deps() {
         let dir = tempfile::tempdir().unwrap();
 
         std::fs::write(
-            dir.path().join("pnpm-workspace.yaml"),
-            "packages:\n  - 'packages/*'\n",
+            dir.path().join(".yarnrc.yml"),
+            "nodeLinker: node-modules\n",
+        )
+        .unwrap();
+
+        std::fs::write(
+            dir.path().join("package.json"),
+            r#"{"name": "root", "workspaces": ["packages/*"]}"#,
         )
         .unwrap();
 
@@ -320,48 +293,25 @@ mod tests {
         std::fs::create_dir_all(dir.path().join("packages/bar")).unwrap();
         std::fs::write(
             dir.path().join("packages/bar/package.json"),
-            r#"{"name": "bar", "version": "1.0.0", "dependencies": {"foo": "workspace:*"}}"#,
+            r#"{"name": "bar", "version": "1.0.0"}"#,
         )
         .unwrap();
 
-        let graph = NpmResolver.resolve(dir.path()).unwrap();
+        let graph = YarnResolver.resolve(dir.path()).unwrap();
         assert_eq!(graph.packages.len(), 2);
-        assert!(graph.edges.contains(&(
-            PackageId("bar".into()),
-            PackageId("foo".into()),
-        )));
+        assert!(graph.edges.is_empty());
     }
 
     #[test]
-    fn test_expand_globs() {
+    fn test_resolve_yarn_dev_dependencies_create_edges() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(dir.path().join("packages/a")).unwrap();
+
         std::fs::write(
-            dir.path().join("packages/a/package.json"),
-            "{}",
-        )
-        .unwrap();
-        std::fs::create_dir_all(dir.path().join("packages/b")).unwrap();
-        std::fs::write(
-            dir.path().join("packages/b/package.json"),
-            "{}",
+            dir.path().join(".yarnrc.yml"),
+            "nodeLinker: node-modules\n",
         )
         .unwrap();
 
-        let globs = vec!["packages/*".to_string()];
-        let dirs = NpmResolver.expand_globs(dir.path(), &globs).unwrap();
-        assert_eq!(dirs.len(), 2);
-    }
-
-    #[test]
-    fn test_test_command() {
-        let cmd = NpmResolver.test_command(&PackageId("my-pkg".into()));
-        assert_eq!(cmd, vec!["npm", "test", "--workspace", "my-pkg"]);
-    }
-
-    #[test]
-    fn test_dev_dependencies_create_edges() {
-        let dir = tempfile::tempdir().unwrap();
         std::fs::write(
             dir.path().join("package.json"),
             r#"{"name": "root", "workspaces": ["packages/*"]}"#,
@@ -382,10 +332,60 @@ mod tests {
         )
         .unwrap();
 
-        let graph = NpmResolver.resolve(dir.path()).unwrap();
+        let graph = YarnResolver.resolve(dir.path()).unwrap();
         assert!(graph.edges.contains(&(
             PackageId("app".into()),
             PackageId("lib".into()),
         )));
+    }
+
+    #[test]
+    fn test_test_command() {
+        let cmd = YarnResolver.test_command(&PackageId("my-pkg".into()));
+        assert_eq!(
+            cmd,
+            vec!["yarn", "workspace", "my-pkg", "run", "test"]
+        );
+    }
+
+    #[test]
+    fn test_expand_globs() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("packages/a")).unwrap();
+        std::fs::write(dir.path().join("packages/a/package.json"), "{}").unwrap();
+        std::fs::create_dir_all(dir.path().join("packages/b")).unwrap();
+        std::fs::write(dir.path().join("packages/b/package.json"), "{}").unwrap();
+
+        let globs = vec!["packages/*".to_string()];
+        let dirs = YarnResolver.expand_globs(dir.path(), &globs).unwrap();
+        assert_eq!(dirs.len(), 2);
+    }
+
+    #[test]
+    fn test_workspaces_object_form() {
+        let dir = tempfile::tempdir().unwrap();
+
+        std::fs::write(
+            dir.path().join(".yarnrc.yml"),
+            "nodeLinker: node-modules\n",
+        )
+        .unwrap();
+
+        std::fs::write(
+            dir.path().join("package.json"),
+            r#"{"name": "root", "workspaces": {"packages": ["packages/*"]}}"#,
+        )
+        .unwrap();
+
+        std::fs::create_dir_all(dir.path().join("packages/a")).unwrap();
+        std::fs::write(
+            dir.path().join("packages/a/package.json"),
+            r#"{"name": "a", "version": "1.0.0"}"#,
+        )
+        .unwrap();
+
+        let graph = YarnResolver.resolve(dir.path()).unwrap();
+        assert_eq!(graph.packages.len(), 1);
+        assert!(graph.packages.contains_key(&PackageId("a".into())));
     }
 }

@@ -2,6 +2,12 @@
 name = "affected-core"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Core library for language-agnostic affected test detection in monorepos"
+keywords = ["monorepo", "testing", "ci", "affected", "workspace"]
+categories = ["development-tools::testing", "command-line-utilities"]
 
 [dependencies]
 anyhow.workspace = true
@@ -12,3 +18,12 @@ git2.workspace = true
 petgraph.workspace = true
 which.workspace = true
 glob.workspace = true
+tracing.workspace = true
+quick-xml.workspace = true
+regex.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

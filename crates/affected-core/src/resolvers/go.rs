@@ -219,3 +219,105 @@ fn parse_go_mod_module(content: &str) -> Option<String> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_go_work() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("go.work"), "go 1.21\n").unwrap();
+        assert!(GoResolver.detect(dir.path()));
+    }
+
+    #[test]
+    fn test_detect_go_mod() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("go.mod"), "module example.com/foo\n").unwrap();
+        assert!(GoResolver.detect(dir.path()));
+    }
+
+    #[test]
+    fn test_detect_no_go_files() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!GoResolver.detect(dir.path()));
+    }
+
+    #[test]
+    fn test_parse_go_mod_module_basic() {
+        let content = "module example.com/mymod\n\ngo 1.21\n";
+        assert_eq!(
+            parse_go_mod_module(content),
+            Some("example.com/mymod".into())
+        );
+    }
+
+    #[test]
+    fn test_parse_go_mod_module_with_whitespace() {
+        let content = "  module   example.com/foo  \n";
+        assert_eq!(
+            parse_go_mod_module(content),
+            Some("example.com/foo".into())
+        );
+    }
+
+    #[test]
+    fn test_parse_go_mod_module_not_found() {
+        let content = "go 1.21\nrequire example.com/bar v1.0.0\n";
+        assert!(parse_go_mod_module(content).is_none());
+    }
+
+    #[test]
+    fn test_parse_go_work_uses_block() {
+        let content = "go 1.21\n\nuse (\n\t./svc-a\n\t./svc-b\n)\n";
+        let uses = parse_go_work_uses(content);
+        assert_eq!(uses, vec!["svc-a", "svc-b"]);
+    }
+
+    #[test]
+    fn test_parse_go_work_uses_single_line() {
+        let content = "go 1.21\nuse ./mymod\n";
+        let uses = parse_go_work_uses(content);
+        assert_eq!(uses, vec!["mymod"]);
+    }
+
+    #[test]
+    fn test_parse_go_work_uses_empty() {
+        let content = "go 1.21\n";
+        let uses = parse_go_work_uses(content);
+        assert!(uses.is_empty());
+    }
+
+    #[test]
+    fn test_parse_go_work_uses_mixed() {
+        let content = "go 1.21\n\nuse ./standalone\n\nuse (\n\t./a\n\t./b\n)\n";
+        let uses = parse_go_work_uses(content);
+        assert_eq!(uses.len(), 3);
+        assert!(uses.contains(&"standalone".to_string()));
+        assert!(uses.contains(&"a".to_string()));
+        assert!(uses.contains(&"b".to_string()));
+    }
+
+    #[test]
+    fn test_resolve_single_module() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("go.mod"),
+            "module example.com/solo\n\ngo 1.21\n",
+        )
+        .unwrap();
+
+        let graph = GoResolver.resolve(dir.path()).unwrap();
+        assert_eq!(graph.packages.len(), 1);
+        let pkg = graph.packages.values().next().unwrap();
+        assert_eq!(pkg.name, "example.com/solo");
+        assert!(graph.edges.is_empty());
+    }
+
+    #[test]
+    fn test_test_command() {
+        let cmd = GoResolver.test_command(&PackageId("svc-a".into()));
+        assert_eq!(cmd, vec!["go", "test", "./svc-a/..."]);
+    }
+}

@@ -1,5 +1,6 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::{generate, Shell};
 use colored::Colorize;
 use std::path::PathBuf;
 
@@ -14,6 +15,22 @@ struct Cli {
     #[arg(long, global = true, default_value = ".")]
     root: PathBuf,
 
+    /// Increase verbosity (-v for debug, -vv for trace)
+    #[arg(short, long, action = clap::ArgAction::Count, global = true)]
+    verbose: u8,
+
+    /// Suppress non-essential output
+    #[arg(short, long, global = true)]
+    quiet: bool,
+
+    /// Disable colored output
+    #[arg(long, global = true)]
+    no_color: bool,
+
+    /// Path to a custom config file (default: .affected.toml)
+    #[arg(long, global = true)]
+    config: Option<PathBuf>,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -23,23 +40,71 @@ enum Commands {
     /// Run tests for affected packages
     Test {
         /// Base git ref to compare against (branch, tag, or commit)
+        #[arg(long, required_unless_present = "merge_base")]
+        base: Option<String>,
+
+        /// Use merge-base between HEAD and this branch (more accurate for PRs)
         #[arg(long)]
-        base: String,
+        merge_base: Option<String>,
 
         /// Show what would be tested without executing
         #[arg(long)]
         dry_run: bool,
+
+        /// Output results as JSON
+        #[arg(long)]
+        json: bool,
+
+        /// Only test packages matching this glob pattern
+        #[arg(long)]
+        filter: Option<String>,
+
+        /// Skip packages matching this glob pattern
+        #[arg(long)]
+        skip: Option<String>,
+
+        /// Show why each package is affected
+        #[arg(long)]
+        explain: bool,
+
+        /// Number of parallel test jobs (0 = auto, 1 = sequential)
+        #[arg(long, short = 'j', default_value = "1")]
+        jobs: usize,
+
+        /// Timeout per package in seconds
+        #[arg(long)]
+        timeout: Option<u64>,
+
+        /// Write JUnit XML results to this file
+        #[arg(long)]
+        junit: Option<PathBuf>,
     },
 
     /// List affected packages without running tests
     List {
         /// Base git ref to compare against
+        #[arg(long, required_unless_present = "merge_base")]
+        base: Option<String>,
+
+        /// Use merge-base between HEAD and this branch
         #[arg(long)]
-        base: String,
+        merge_base: Option<String>,
 
         /// Output as JSON (for CI integration)
         #[arg(long)]
         json: bool,
+
+        /// Only include packages matching this glob pattern
+        #[arg(long)]
+        filter: Option<String>,
+
+        /// Exclude packages matching this glob pattern
+        #[arg(long)]
+        skip: Option<String>,
+
+        /// Show why each package is affected
+        #[arg(long)]
+        explain: bool,
     },
 
     /// Display the project dependency graph
@@ -51,57 +116,247 @@ enum Commands {
 
     /// Show detected project type and packages
     Detect,
+
+    /// Output affected packages for CI systems (GitHub Actions)
+    Ci {
+        /// Base git ref to compare against
+        #[arg(long, required_unless_present = "merge_base")]
+        base: Option<String>,
+
+        /// Use merge-base between HEAD and this branch
+        #[arg(long)]
+        merge_base: Option<String>,
+
+        /// Only include packages matching this glob pattern
+        #[arg(long)]
+        filter: Option<String>,
+
+        /// Exclude packages matching this glob pattern
+        #[arg(long)]
+        skip: Option<String>,
+    },
+
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        shell: Shell,
+    },
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    // Handle --no-color
+    if cli.no_color || std::env::var("NO_COLOR").is_ok() {
+        colored::control::set_override(false);
+    }
+
+    // Initialize tracing
+    let log_level = match cli.verbose {
+        0 => "warn",
+        1 => "debug",
+        _ => "trace",
+    };
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(log_level)),
+        )
+        .with_target(false)
+        .without_time()
+        .init();
+
     let root = std::fs::canonicalize(&cli.root)?;
 
     match cli.command {
-        Commands::Test { base, dry_run } => cmd_test(&root, &base, dry_run),
-        Commands::List { base, json } => cmd_list(&root, &base, json),
+        Commands::Test {
+            base,
+            merge_base,
+            dry_run,
+            json,
+            filter,
+            skip,
+            explain,
+            jobs,
+            timeout,
+            junit,
+        } => {
+            let base_ref = resolve_base(&root, base, merge_base)?;
+            cmd_test(
+                &root,
+                &base_ref,
+                dry_run,
+                json,
+                filter.as_deref(),
+                skip.as_deref(),
+                explain,
+                jobs,
+                timeout,
+                junit,
+                cli.config.as_deref(),
+                cli.quiet,
+            )
+        }
+        Commands::List {
+            base,
+            merge_base,
+            json,
+            filter,
+            skip,
+            explain,
+        } => {
+            let base_ref = resolve_base(&root, base, merge_base)?;
+            cmd_list(
+                &root,
+                &base_ref,
+                json,
+                filter.as_deref(),
+                skip.as_deref(),
+                explain,
+                cli.quiet,
+            )
+        }
         Commands::Graph { dot } => cmd_graph(&root, dot),
         Commands::Detect => cmd_detect(&root),
+        Commands::Ci {
+            base,
+            merge_base,
+            filter,
+            skip,
+        } => {
+            let base_ref = resolve_base(&root, base, merge_base)?;
+            cmd_ci(&root, &base_ref, filter.as_deref(), skip.as_deref())
+        }
+        Commands::Completions { shell } => {
+            let mut cmd = Cli::command();
+            generate(shell, &mut cmd, "affected", &mut std::io::stdout());
+            Ok(())
+        }
     }
 }
 
-fn cmd_test(root: &PathBuf, base: &str, dry_run: bool) -> Result<()> {
-    let config = affected_core::config::Config::load(root)?;
-    let result = affected_core::find_affected(root, base)?;
+/// Resolve the base ref from --base or --merge-base flags.
+fn resolve_base(root: &PathBuf, base: Option<String>, merge_base: Option<String>) -> Result<String> {
+    if let Some(mb) = merge_base {
+        affected_core::find_merge_base(root, &mb)
+    } else {
+        Ok(base.unwrap_or_else(|| "HEAD".to_string()))
+    }
+}
+
+fn load_config(root: &PathBuf, config_path: Option<&std::path::Path>) -> Result<affected_core::config::Config> {
+    match config_path {
+        Some(path) => affected_core::config::Config::load_from(path),
+        None => affected_core::config::Config::load(root),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn cmd_test(
+    root: &PathBuf,
+    base: &str,
+    dry_run: bool,
+    json: bool,
+    filter: Option<&str>,
+    skip: Option<&str>,
+    explain: bool,
+    jobs: usize,
+    timeout: Option<u64>,
+    junit: Option<PathBuf>,
+    config_path: Option<&std::path::Path>,
+    quiet: bool,
+) -> Result<()> {
+    let config = load_config(root, config_path)?;
+    let result = affected_core::find_affected_with_options(root, base, explain, filter, skip)?;
 
     if result.affected.is_empty() {
-        println!("{}", "No packages affected.".dimmed());
+        if !json && !quiet {
+            println!("{}", "No packages affected.".dimmed());
+        }
+        if json {
+            let empty = affected_core::types::TestOutputJson {
+                affected: vec![],
+                results: vec![],
+                summary: affected_core::types::TestSummaryJson {
+                    passed: 0,
+                    failed: 0,
+                    total: 0,
+                    duration_ms: 0,
+                },
+            };
+            println!("{}", serde_json::to_string_pretty(&empty)?);
+        }
         return Ok(());
     }
 
-    println!(
-        "{} {} affected package(s) (out of {} total, {} files changed):",
-        "Testing".bold().cyan(),
-        result.affected.len(),
-        result.total_packages,
-        result.changed_files,
-    );
-    println!();
+    if !json && !quiet {
+        println!(
+            "{} {} affected package(s) (out of {} total, {} files changed):",
+            "Testing".bold().cyan(),
+            result.affected.len(),
+            result.total_packages,
+            result.changed_files,
+        );
+        if explain {
+            print_explanations(&result);
+        }
+        println!();
+    }
 
-    // Determine ecosystem for test commands
     let resolver = affected_core::resolvers::detect_resolver(root)?;
     let ecosystem = resolver.ecosystem();
 
     let commands: Vec<_> = result
         .affected
         .iter()
+        .filter(|name| {
+            // Skip packages marked skip=true in config
+            config
+                .package_config(name)
+                .and_then(|pc| pc.skip)
+                .unwrap_or(false)
+                == false
+        })
         .map(|name| {
             let pkg_id = affected_core::types::PackageId(name.clone());
+            // Priority: per-package config > ecosystem config > resolver default
             let cmd = config
-                .test_command_for(ecosystem, name)
+                .package_config(name)
+                .and_then(|pc| pc.test.as_ref())
+                .map(|t| t.replace("{package}", name).split_whitespace().map(String::from).collect())
+                .or_else(|| config.test_command_for(ecosystem, name))
                 .unwrap_or_else(|| resolver.test_command(&pkg_id));
             (pkg_id, cmd)
         })
         .collect();
 
-    let runner = affected_core::runner::Runner::new(root, dry_run);
+    let timeout_dur = timeout.map(std::time::Duration::from_secs);
+    let runner = affected_core::runner::Runner::new(affected_core::runner::RunnerConfig {
+        root: root.clone(),
+        dry_run,
+        timeout: timeout_dur,
+        jobs,
+        json,
+        quiet,
+    });
+
     let results = runner.run_tests(commands)?;
-    affected_core::runner::print_summary(&results);
+
+    if json {
+        let json_output = affected_core::runner::results_to_json(&result.affected, &results);
+        println!("{}", serde_json::to_string_pretty(&json_output)?);
+    } else {
+        affected_core::runner::print_summary(&results);
+    }
+
+    // Write JUnit XML if requested
+    if let Some(junit_path) = junit {
+        let junit_xml = affected_core::runner::results_to_junit(&results);
+        std::fs::write(&junit_path, junit_xml)?;
+        if !quiet {
+            println!("  JUnit results written to {}", junit_path.display());
+        }
+    }
 
     let any_failed = results.iter().any(|r| !r.success);
     if any_failed {
@@ -111,8 +366,16 @@ fn cmd_test(root: &PathBuf, base: &str, dry_run: bool) -> Result<()> {
     Ok(())
 }
 
-fn cmd_list(root: &PathBuf, base: &str, json: bool) -> Result<()> {
-    let result = affected_core::find_affected(root, base)?;
+fn cmd_list(
+    root: &PathBuf,
+    base: &str,
+    json: bool,
+    filter: Option<&str>,
+    skip: Option<&str>,
+    explain: bool,
+    quiet: bool,
+) -> Result<()> {
+    let result = affected_core::find_affected_with_options(root, base, explain, filter, skip)?;
 
     if json {
         println!("{}", serde_json::to_string_pretty(&result)?);
@@ -120,19 +383,27 @@ fn cmd_list(root: &PathBuf, base: &str, json: bool) -> Result<()> {
     }
 
     if result.affected.is_empty() {
-        println!("{}", "No packages affected.".dimmed());
+        if !quiet {
+            println!("{}", "No packages affected.".dimmed());
+        }
         return Ok(());
     }
 
-    println!(
-        "{} affected package(s) (base: {}, {} files changed):\n",
-        result.affected.len().to_string().bold(),
-        base.cyan(),
-        result.changed_files,
-    );
+    if !quiet {
+        println!(
+            "{} affected package(s) (base: {}, {} files changed):\n",
+            result.affected.len().to_string().bold(),
+            base.cyan(),
+            result.changed_files,
+        );
+    }
 
-    for name in &result.affected {
-        println!("  {} {}", "●".green(), name);
+    if explain {
+        print_explanations(&result);
+    } else {
+        for name in &result.affected {
+            println!("  {} {}", "●".green(), name);
+        }
     }
 
     Ok(())
@@ -141,6 +412,21 @@ fn cmd_list(root: &PathBuf, base: &str, json: bool) -> Result<()> {
 fn cmd_graph(root: &PathBuf, dot: bool) -> Result<()> {
     let (_resolver, project_graph) = affected_core::resolve_project(root)?;
     let dep_graph = affected_core::graph::DepGraph::from_project_graph(&project_graph);
+
+    // Check for cycles
+    if dep_graph.has_cycles() {
+        let cycles = dep_graph.find_cycles();
+        eprintln!(
+            "{} Dependency cycles detected ({}):",
+            "Warning:".yellow().bold(),
+            cycles.len()
+        );
+        for cycle in &cycles {
+            let names: Vec<_> = cycle.iter().map(|p| p.0.as_str()).collect();
+            eprintln!("  {} {}", "⟳".yellow(), names.join(" → "));
+        }
+        eprintln!();
+    }
 
     if dot {
         println!("{}", dep_graph.to_dot());
@@ -198,4 +484,62 @@ fn cmd_detect(root: &PathBuf) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn cmd_ci(
+    root: &PathBuf,
+    base: &str,
+    filter: Option<&str>,
+    skip: Option<&str>,
+) -> Result<()> {
+    let result = affected_core::find_affected_with_options(root, base, false, filter, skip)?;
+
+    let affected_csv = result.affected.join(",");
+    let count = result.affected.len();
+    let has_affected = !result.affected.is_empty();
+
+    // Output for GitHub Actions
+    if let Ok(output_file) = std::env::var("GITHUB_OUTPUT") {
+        let mut content = String::new();
+        content.push_str(&format!("affected={}\n", affected_csv));
+        content.push_str(&format!("count={}\n", count));
+        content.push_str(&format!("has_affected={}\n", has_affected));
+        content.push_str(&format!(
+            "affected_json={}\n",
+            serde_json::to_string(&result.affected)?
+        ));
+        std::fs::write(output_file, content)?;
+    }
+
+    // Also print to stdout for other CI systems
+    println!("affected={}", affected_csv);
+    println!("count={}", count);
+    println!("has_affected={}", has_affected);
+
+    Ok(())
+}
+
+fn print_explanations(result: &affected_core::types::AffectedResult) {
+    if let Some(explanations) = &result.explanations {
+        for entry in explanations {
+            match &entry.reason {
+                affected_core::types::ExplainReason::DirectlyChanged { files } => {
+                    println!(
+                        "  {} {} {}",
+                        "●".yellow(),
+                        entry.package.cyan(),
+                        format!("(directly changed: {})", files.join(", ")).dimmed()
+                    );
+                }
+                affected_core::types::ExplainReason::TransitivelyAffected { chain } => {
+                    println!(
+                        "  {} {} {}",
+                        "●".red(),
+                        entry.package.cyan(),
+                        format!("(depends on: {})", chain.join(" → ")).dimmed()
+                    );
+                }
+            }
+        }
+    }
 }

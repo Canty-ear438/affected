@@ -10,6 +10,9 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/Rani367/affected"
+homepage = "https://github.com/Rani367/affected"
+rust-version = "1.75"
+authors = ["Rani367"]
 
 [workspace.dependencies]
 affected-core = { path = "crates/affected-core" }
@@ -18,8 +21,21 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
 git2 = "0.19"
 petgraph = "0.7"
 colored = "3"
 which = "7"
 glob = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+indicatif = "0.17"
+quick-xml = { version = "0.37", features = ["serialize"] }
+regex = "1"
+libc = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
+codegen-units = 1

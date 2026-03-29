@@ -5,8 +5,11 @@ use crate::types::{Ecosystem, PackageId, ProjectGraph};
 
 pub mod cargo;
 pub mod go;
+pub mod gradle;
+pub mod maven;
 pub mod npm;
 pub mod python;
+pub mod yarn;
 
 /// Trait implemented by each ecosystem resolver.
 pub trait Resolver {
@@ -30,9 +33,12 @@ pub trait Resolver {
 pub fn all_resolvers() -> Vec<Box<dyn Resolver>> {
     vec![
         Box::new(cargo::CargoResolver),
+        Box::new(yarn::YarnResolver), // Yarn before Npm: .yarnrc.yml takes priority
         Box::new(npm::NpmResolver),
         Box::new(go::GoResolver),
         Box::new(python::PythonResolver),
+        Box::new(maven::MavenResolver),
+        Box::new(gradle::GradleResolver),
     ]
 }
 
@@ -66,4 +72,97 @@ pub fn file_to_package(graph: &ProjectGraph, file: &Path) -> Option<PackageId> {
     }
 
     best.map(|(id, _)| id.clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::Package;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    fn make_project_graph(pkgs: &[(&str, &str)]) -> ProjectGraph {
+        let root = PathBuf::from("/project");
+        let mut packages = HashMap::new();
+        for (name, rel_path) in pkgs {
+            let id = PackageId(name.to_string());
+            packages.insert(
+                id.clone(),
+                Package {
+                    id: id.clone(),
+                    name: name.to_string(),
+                    version: None,
+                    path: root.join(rel_path),
+                    manifest_path: root.join(rel_path).join("Cargo.toml"),
+                },
+            );
+        }
+        ProjectGraph {
+            packages,
+            edges: vec![],
+            root,
+        }
+    }
+
+    #[test]
+    fn test_file_to_package_basic() {
+        let pg = make_project_graph(&[("core", "crates/core"), ("cli", "crates/cli")]);
+        let result = file_to_package(&pg, &PathBuf::from("crates/core/src/lib.rs"));
+        assert_eq!(result, Some(PackageId("core".into())));
+    }
+
+    #[test]
+    fn test_file_to_package_no_match() {
+        let pg = make_project_graph(&[("core", "crates/core")]);
+        let result = file_to_package(&pg, &PathBuf::from("scripts/build.sh"));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_file_to_package_longest_prefix() {
+        // Nested packages: "crates/foo" and "crates/foo/bar"
+        let pg = make_project_graph(&[
+            ("foo", "crates/foo"),
+            ("foo-bar", "crates/foo/bar"),
+        ]);
+
+        // File in nested package should match the deeper one
+        let result = file_to_package(&pg, &PathBuf::from("crates/foo/bar/src/lib.rs"));
+        assert_eq!(result, Some(PackageId("foo-bar".into())));
+
+        // File in parent package should match the shallower one
+        let result = file_to_package(&pg, &PathBuf::from("crates/foo/src/lib.rs"));
+        assert_eq!(result, Some(PackageId("foo".into())));
+    }
+
+    #[test]
+    fn test_file_to_package_root_level_file() {
+        let pg = make_project_graph(&[("core", "crates/core")]);
+        let result = file_to_package(&pg, &PathBuf::from("README.md"));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_detect_resolver_cargo() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[workspace]\nmembers = []\n",
+        )
+        .unwrap();
+
+        let resolver = detect_resolver(dir.path()).unwrap();
+        assert_eq!(resolver.ecosystem(), Ecosystem::Cargo);
+    }
+
+    #[test]
+    fn test_detect_resolver_none() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(detect_resolver(dir.path()).is_err());
+    }
+
+    #[test]
+    fn test_all_resolvers_count() {
+        assert_eq!(all_resolvers().len(), 7);
+    }
 }

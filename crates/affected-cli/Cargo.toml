@@ -2,6 +2,12 @@
 name = "affected-cli"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Run only the tests that matter. Language-agnostic affected test detection for monorepos."
+keywords = ["monorepo", "testing", "ci", "affected", "workspace"]
+categories = ["development-tools::testing", "command-line-utilities"]
 
 [[bin]]
 name = "affected"
@@ -10,6 +16,17 @@ path = "src/main.rs"
 [dependencies]
 affected-core.workspace = true
 clap.workspace = true
+clap_complete.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true
+serde.workspace = true
 colored.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+indicatif.workspace = true
+glob.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
+assert_cmd = "2"
+predicates = "3"
