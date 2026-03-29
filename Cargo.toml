@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/affected-cli",
+    "crates/affected-core",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/Rani367/affected"
+
+[workspace.dependencies]
+affected-core = { path = "crates/affected-core" }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+clap = { version = "4", features = ["derive"] }
+git2 = "0.19"
+petgraph = "0.7"
+colored = "3"
+which = "7"
+glob = "0.3"

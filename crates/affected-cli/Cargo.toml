@@ -1,0 +1,15 @@
+[package]
+name = "affected-cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "affected"
+path = "src/main.rs"
+
+[dependencies]
+affected-core.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true
+colored.workspace = true
