@@ -237,7 +237,7 @@ fn main() -> Result<()> {
 
 /// Resolve the base ref from --base or --merge-base flags.
 fn resolve_base(
-    root: &PathBuf,
+    root: &std::path::Path,
     base: Option<String>,
     merge_base: Option<String>,
 ) -> Result<String> {
@@ -249,7 +249,7 @@ fn resolve_base(
 }
 
 fn load_config(
-    root: &PathBuf,
+    root: &std::path::Path,
     config_path: Option<&std::path::Path>,
 ) -> Result<affected_core::config::Config> {
     match config_path {
@@ -260,7 +260,7 @@ fn load_config(
 
 #[allow(clippy::too_many_arguments)]
 fn cmd_test(
-    root: &PathBuf,
+    root: &std::path::Path,
     base: &str,
     dry_run: bool,
     json: bool,
@@ -318,11 +318,10 @@ fn cmd_test(
         .iter()
         .filter(|name| {
             // Skip packages marked skip=true in config
-            config
+            !config
                 .package_config(name)
                 .and_then(|pc| pc.skip)
                 .unwrap_or(false)
-                == false
         })
         .map(|name| {
             let pkg_id = affected_core::types::PackageId(name.clone());
@@ -344,7 +343,7 @@ fn cmd_test(
 
     let timeout_dur = timeout.map(std::time::Duration::from_secs);
     let runner = affected_core::runner::Runner::new(affected_core::runner::RunnerConfig {
-        root: root.clone(),
+        root: root.to_path_buf(),
         dry_run,
         timeout: timeout_dur,
         jobs,
@@ -379,7 +378,7 @@ fn cmd_test(
 }
 
 fn cmd_list(
-    root: &PathBuf,
+    root: &std::path::Path,
     base: &str,
     json: bool,
     filter: Option<&str>,
@@ -421,7 +420,7 @@ fn cmd_list(
     Ok(())
 }
 
-fn cmd_graph(root: &PathBuf, dot: bool) -> Result<()> {
+fn cmd_graph(root: &std::path::Path, dot: bool) -> Result<()> {
     let (_resolver, project_graph) = affected_core::resolve_project(root)?;
     let dep_graph = affected_core::graph::DepGraph::from_project_graph(&project_graph);
 
@@ -459,7 +458,7 @@ fn cmd_graph(root: &PathBuf, dot: bool) -> Result<()> {
     Ok(())
 }
 
-fn cmd_detect(root: &PathBuf) -> Result<()> {
+fn cmd_detect(root: &std::path::Path) -> Result<()> {
     let ecosystems = affected_core::detect::detect_ecosystems(root)?;
     let (resolver, project_graph) = affected_core::resolve_project(root)?;
 
@@ -498,7 +497,12 @@ fn cmd_detect(root: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn cmd_ci(root: &PathBuf, base: &str, filter: Option<&str>, skip: Option<&str>) -> Result<()> {
+fn cmd_ci(
+    root: &std::path::Path,
+    base: &str,
+    filter: Option<&str>,
+    skip: Option<&str>,
+) -> Result<()> {
     let result = affected_core::find_affected_with_options(root, base, false, filter, skip)?;
 
     let affected_csv = result.affected.join(",");
