@@ -46,9 +46,13 @@ members = ["crates/core", "crates/app"]
         .unwrap();
     std::process::Command::new("git")
         .args([
-            "-c", "user.name=Test",
-            "-c", "user.email=test@test.com",
-            "commit", "-m", "init",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@test.com",
+            "commit",
+            "-m",
+            "init",
         ])
         .current_dir(dir)
         .output()
@@ -154,9 +158,13 @@ fn test_cli_list_with_changes() {
         .unwrap();
     std::process::Command::new("git")
         .args([
-            "-c", "user.name=Test",
-            "-c", "user.email=test@test.com",
-            "commit", "-m", "change core",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@test.com",
+            "commit",
+            "-m",
+            "change core",
         ])
         .current_dir(dir.path())
         .output()
@@ -189,9 +197,13 @@ fn test_cli_list_json() {
         .unwrap();
     std::process::Command::new("git")
         .args([
-            "-c", "user.name=Test",
-            "-c", "user.email=test@test.com",
-            "commit", "-m", "change",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@test.com",
+            "commit",
+            "-m",
+            "change",
         ])
         .current_dir(dir.path())
         .output()
@@ -231,9 +243,13 @@ fn test_cli_test_dry_run() {
         .unwrap();
     std::process::Command::new("git")
         .args([
-            "-c", "user.name=Test",
-            "-c", "user.email=test@test.com",
-            "commit", "-m", "change app",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@test.com",
+            "commit",
+            "-m",
+            "change app",
         ])
         .current_dir(dir.path())
         .output()
@@ -277,9 +293,7 @@ fn test_cli_invalid_base_ref() {
 
 #[test]
 fn test_cli_no_subcommand() {
-    affected_cmd()
-        .assert()
-        .failure();
+    affected_cmd().assert().failure();
 }
 
 #[test]

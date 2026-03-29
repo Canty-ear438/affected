@@ -30,8 +30,8 @@ impl Resolver for MavenResolver {
 
     fn resolve(&self, root: &Path) -> Result<ProjectGraph> {
         let root_pom_path = root.join("pom.xml");
-        let root_content = std::fs::read_to_string(&root_pom_path)
-            .context("Failed to read root pom.xml")?;
+        let root_content =
+            std::fs::read_to_string(&root_pom_path).context("Failed to read root pom.xml")?;
 
         let root_info = parse_pom(&root_content)?;
 
@@ -42,10 +42,7 @@ impl Resolver for MavenResolver {
             root_info.modules.len()
         );
 
-        let root_group_id = root_info
-            .group_id
-            .clone()
-            .unwrap_or_default();
+        let root_group_id = root_info.group_id.clone().unwrap_or_default();
 
         let mut packages = HashMap::new();
         let mut coord_to_id: HashMap<String, PackageId> = HashMap::new();
@@ -66,7 +63,10 @@ impl Resolver for MavenResolver {
                 .artifact_id
                 .clone()
                 .unwrap_or_else(|| module_name.clone());
-            let group_id = info.group_id.clone().unwrap_or_else(|| root_group_id.clone());
+            let group_id = info
+                .group_id
+                .clone()
+                .unwrap_or_else(|| root_group_id.clone());
 
             let pkg_id = PackageId(module_name.clone());
             let coord = format!("{}:{}", group_id, artifact_id);
@@ -344,18 +344,12 @@ mod tests {
             info.dependencies[0].group_id.as_deref(),
             Some("com.example")
         );
-        assert_eq!(
-            info.dependencies[0].artifact_id.as_deref(),
-            Some("core")
-        );
+        assert_eq!(info.dependencies[0].artifact_id.as_deref(), Some("core"));
         assert_eq!(
             info.dependencies[1].group_id.as_deref(),
             Some("org.external")
         );
-        assert_eq!(
-            info.dependencies[1].artifact_id.as_deref(),
-            Some("lib")
-        );
+        assert_eq!(info.dependencies[1].artifact_id.as_deref(), Some("lib"));
     }
 
     #[test]
@@ -434,10 +428,9 @@ mod tests {
         assert!(graph.packages.contains_key(&PackageId("web".into())));
 
         // web depends on core
-        assert!(graph.edges.contains(&(
-            PackageId("web".into()),
-            PackageId("core".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("web".into()), PackageId("core".into()),)));
     }
 
     #[test]
@@ -541,10 +534,9 @@ mod tests {
         let graph = MavenResolver.resolve(dir.path()).unwrap();
         assert_eq!(graph.packages.len(), 2);
         // api depends on core
-        assert!(graph.edges.contains(&(
-            PackageId("api".into()),
-            PackageId("core".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("api".into()), PackageId("core".into()),)));
     }
 
     #[test]

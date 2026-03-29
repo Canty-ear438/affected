@@ -31,7 +31,11 @@ pub fn find_affected_with_options(
     filter: Option<&str>,
     skip: Option<&str>,
 ) -> Result<AffectedResult> {
-    debug!("Finding affected packages at {} with base ref '{}'", root.display(), base_ref);
+    debug!(
+        "Finding affected packages at {} with base ref '{}'",
+        root.display(),
+        base_ref
+    );
 
     let config = config::Config::load(root)?;
 
@@ -46,9 +50,12 @@ pub fn find_affected_with_options(
     debug!("Resolved {} packages", project_graph.packages.len());
 
     // 3. Get changed files from git
-    let git_diff = git::changed_files(root, base_ref)
-        .context("Failed to compute git diff")?;
-    debug!("{} files changed since {}", git_diff.changed_files.len(), base_ref);
+    let git_diff = git::changed_files(root, base_ref).context("Failed to compute git diff")?;
+    debug!(
+        "{} files changed since {}",
+        git_diff.changed_files.len(),
+        base_ref
+    );
 
     // 4. Map changed files to packages (filtering ignored files)
     let mut changed_packages = HashSet::new();
@@ -74,7 +81,10 @@ pub fn find_affected_with_options(
     // 5. Build dependency graph and compute transitive affected set
     let dep_graph = graph::DepGraph::from_project_graph(&project_graph);
     let affected = dep_graph.affected_by(&changed_packages);
-    debug!("{} packages affected (including transitive)", affected.len());
+    debug!(
+        "{} packages affected (including transitive)",
+        affected.len()
+    );
 
     // 6. Build explanations if requested
     let explanations = if explain {
@@ -144,9 +154,7 @@ pub fn find_merge_base(root: &Path, branch: &str) -> Result<String> {
 
 /// Build the project graph and return it alongside the resolver.
 /// Used by commands that need the graph without computing affected packages.
-pub fn resolve_project(
-    root: &Path,
-) -> Result<(Box<dyn resolvers::Resolver>, types::ProjectGraph)> {
+pub fn resolve_project(root: &Path) -> Result<(Box<dyn resolvers::Resolver>, types::ProjectGraph)> {
     let resolver = resolvers::detect_resolver(root)?;
     let graph = resolver
         .resolve(root)

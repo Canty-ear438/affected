@@ -79,9 +79,7 @@ impl Resolver for GradleResolver {
 
         for (pkg_id, pkg) in &packages {
             let build_content = std::fs::read_to_string(&pkg.manifest_path)
-                .with_context(|| {
-                    format!("Failed to read {}", pkg.manifest_path.display())
-                })?;
+                .with_context(|| format!("Failed to read {}", pkg.manifest_path.display()))?;
 
             let project_refs = parse_project_dependencies(&build_content);
 
@@ -104,10 +102,7 @@ impl Resolver for GradleResolver {
     }
 
     fn test_command(&self, package_id: &PackageId) -> Vec<String> {
-        vec![
-            "gradle".into(),
-            format!(":{}:test", package_id.0),
-        ]
+        vec!["gradle".into(), format!(":{}:test", package_id.0)]
     }
 }
 
@@ -137,8 +132,8 @@ fn parse_include_directives(content: &str) -> Vec<String> {
 
     // Match quoted module names after include (both Groovy and Kotlin DSL forms).
     // Captures the colon-prefixed module name inside quotes.
-    let re = Regex::new(r#"include\s*\(?\s*(?:['"]:[\w-]+['"]\s*,\s*)*['"]:?([\w-]+)['"]"#)
-        .unwrap();
+    let re =
+        Regex::new(r#"include\s*\(?\s*(?:['"]:[\w-]+['"]\s*,\s*)*['"]:?([\w-]+)['"]"#).unwrap();
 
     // A simpler approach: find all quoted :module references on lines starting with include
     let module_re = Regex::new(r#"['"]:([\w-]+)['"]"#).unwrap();
@@ -337,10 +332,9 @@ dependencies {
         assert!(graph.packages.contains_key(&PackageId("lib".into())));
 
         // app depends on lib
-        assert!(graph.edges.contains(&(
-            PackageId("app".into()),
-            PackageId("lib".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("app".into()), PackageId("lib".into()),)));
     }
 
     #[test]
@@ -375,10 +369,9 @@ dependencies {
         assert!(graph.packages.contains_key(&PackageId("api".into())));
 
         // api depends on core
-        assert!(graph.edges.contains(&(
-            PackageId("api".into()),
-            PackageId("core".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("api".into()), PackageId("core".into()),)));
     }
 
     #[test]

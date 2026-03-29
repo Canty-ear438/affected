@@ -1,6 +1,7 @@
+use petgraph::algo::{is_cyclic_directed, tarjan_scc};
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::Bfs;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::types::{PackageId, ProjectGraph};
 
@@ -52,6 +53,107 @@ impl DepGraph {
         result
     }
 
+    /// For each affected package, return the shortest dependency chain back to a
+    /// directly changed package. Uses BFS on the reversed graph, tracking parents.
+    pub fn explain_affected(
+        &self,
+        changed: &HashSet<PackageId>,
+        affected: &HashSet<PackageId>,
+    ) -> Vec<(PackageId, Vec<PackageId>)> {
+        let mut parent: HashMap<NodeIndex, Option<NodeIndex>> = HashMap::new();
+        let mut visited: HashSet<NodeIndex> = HashSet::new();
+        let mut queue: VecDeque<NodeIndex> = VecDeque::new();
+
+        // Initialize BFS from all changed packages
+        for pkg in changed {
+            if let Some(&idx) = self.node_map.get(pkg) {
+                if visited.insert(idx) {
+                    parent.insert(idx, None);
+                    queue.push_back(idx);
+                }
+            }
+        }
+
+        // BFS on reversed graph (follow incoming edges)
+        while let Some(current) = queue.pop_front() {
+            for neighbor in self
+                .graph
+                .neighbors_directed(current, petgraph::Direction::Incoming)
+            {
+                if visited.insert(neighbor) {
+                    parent.insert(neighbor, Some(current));
+                    queue.push_back(neighbor);
+                }
+            }
+        }
+
+        let mut results = Vec::new();
+        for pkg in affected {
+            if let Some(&idx) = self.node_map.get(pkg) {
+                if changed.contains(pkg) {
+                    results.push((pkg.clone(), vec![pkg.clone()]));
+                } else if parent.contains_key(&idx) {
+                    let mut chain = vec![pkg.clone()];
+                    let mut cur = idx;
+                    while let Some(Some(prev)) = parent.get(&cur) {
+                        chain.push(self.graph[*prev].clone());
+                        cur = *prev;
+                    }
+                    results.push((pkg.clone(), chain));
+                }
+            }
+        }
+
+        results.sort_by(|a, b| a.0.cmp(&b.0));
+        results
+    }
+
+    /// Check if the dependency graph contains any cycles.
+    pub fn has_cycles(&self) -> bool {
+        is_cyclic_directed(&self.graph)
+    }
+
+    /// Find and return all cycles in the graph (SCCs with size > 1).
+    pub fn find_cycles(&self) -> Vec<Vec<PackageId>> {
+        tarjan_scc(&self.graph)
+            .into_iter()
+            .filter(|scc| scc.len() > 1)
+            .map(|scc| scc.into_iter().map(|idx| self.graph[idx].clone()).collect())
+            .collect()
+    }
+
+    /// Enhanced DOT output where affected nodes are colored red and changed nodes are orange.
+    pub fn to_dot_with_affected(
+        &self,
+        changed: &HashSet<PackageId>,
+        affected: &HashSet<PackageId>,
+    ) -> String {
+        let mut lines = vec!["digraph dependencies {".to_string()];
+        for (pkg_id, &idx) in &self.node_map {
+            let label = &self.graph[idx].0;
+            if changed.contains(pkg_id) {
+                lines.push(format!(
+                    "    \"{}\" [style=filled, fillcolor=orange];",
+                    label
+                ));
+            } else if affected.contains(pkg_id) {
+                lines.push(format!(
+                    "    \"{}\" [style=filled, fillcolor=red, fontcolor=white];",
+                    label
+                ));
+            }
+        }
+        for edge in self.graph.edge_indices() {
+            let (a, b) = self.graph.edge_endpoints(edge).unwrap();
+            lines.push(format!(
+                "    \"{}\" -> \"{}\";",
+                self.graph[a], self.graph[b]
+            ));
+        }
+        lines.push("}".to_string());
+        lines.join("\n")
+    }
+
     /// Return all package IDs in the graph.
     pub fn all_packages(&self) -> Vec<&PackageId> {
         self.graph.node_weights().collect()
@@ -89,10 +191,7 @@ mod tests {
     use crate::types::Package;
     use std::path::PathBuf;
 
-    fn make_graph(
-        names: &[&str],
-        edges: &[(&str, &str)],
-    ) -> ProjectGraph {
+    fn make_graph(names: &[&str], edges: &[(&str, &str)]) -> ProjectGraph {
         let mut packages = HashMap::new();
         for name in names {
             let id = PackageId(name.to_string());
@@ -121,10 +220,7 @@ mod tests {
     #[test]
     fn test_linear_chain() {
         // cli -> api -> core
-        let pg = make_graph(
-            &["core", "api", "cli"],
-            &[("api", "core"), ("cli", "api")],
-        );
+        let pg = make_graph(&["core", "api", "cli"], &[("api", "core"), ("cli", "api")]);
         let dg = DepGraph::from_project_graph(&pg);
 
         let changed: HashSet<_> = [PackageId("core".into())].into();
@@ -139,10 +235,7 @@ mod tests {
     #[test]
     fn test_leaf_change() {
         // cli -> api -> core
-        let pg = make_graph(
-            &["core", "api", "cli"],
-            &[("api", "core"), ("cli", "api")],
-        );
+        let pg = make_graph(&["core", "api", "cli"], &[("api", "core"), ("cli", "api")]);
         let dg = DepGraph::from_project_graph(&pg);
 
         let changed: HashSet<_> = [PackageId("cli".into())].into();
@@ -178,10 +271,7 @@ mod tests {
 
     #[test]
     fn test_isolated_package() {
-        let pg = make_graph(
-            &["core", "api", "standalone"],
-            &[("api", "core")],
-        );
+        let pg = make_graph(&["core", "api", "standalone"], &[("api", "core")]);
         let dg = DepGraph::from_project_graph(&pg);
 
         let changed: HashSet<_> = [PackageId("core".into())].into();

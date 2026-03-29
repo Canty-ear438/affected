@@ -21,9 +21,13 @@ fn git_init_and_commit(dir: &Path) {
 
     Command::new("git")
         .args([
-            "-c", "user.name=Test",
-            "-c", "user.email=test@test.com",
-            "commit", "-m", "initial",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@test.com",
+            "commit",
+            "-m",
+            "initial",
         ])
         .current_dir(dir)
         .output()
@@ -46,9 +50,13 @@ fn git_change_and_commit(dir: &Path, file: &str, content: &str) {
 
     Command::new("git")
         .args([
-            "-c", "user.name=Test",
-            "-c", "user.email=test@test.com",
-            "commit", "-m", "change",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@test.com",
+            "commit",
+            "-m",
+            "change",
         ])
         .current_dir(dir)
         .output()
@@ -106,7 +114,11 @@ fn test_cargo_full_pipeline_core_change() {
     git_init_and_commit(dir.path());
 
     // Change core → should affect core, api, cli
-    git_change_and_commit(dir.path(), "crates/core/src/lib.rs", "pub fn hello() { /* changed */ }\n");
+    git_change_and_commit(
+        dir.path(),
+        "crates/core/src/lib.rs",
+        "pub fn hello() { /* changed */ }\n",
+    );
 
     let result = affected_core::find_affected(dir.path(), "HEAD~1").unwrap();
     assert_eq!(result.total_packages, 3);
@@ -152,7 +164,11 @@ fn test_cargo_full_pipeline_middle_change() {
     git_init_and_commit(dir.path());
 
     // Change api → should affect api + cli (not core)
-    git_change_and_commit(dir.path(), "crates/api/src/lib.rs", "pub fn serve() { /* v2 */ }\n");
+    git_change_and_commit(
+        dir.path(),
+        "crates/api/src/lib.rs",
+        "pub fn serve() { /* v2 */ }\n",
+    );
 
     let result = affected_core::find_affected(dir.path(), "HEAD~1").unwrap();
     assert!(result.affected.contains(&"api".to_string()));
@@ -176,7 +192,11 @@ fn create_npm_workspace(dir: &Path) {
         r#"{"name": "shared", "version": "1.0.0"}"#,
     )
     .unwrap();
-    std::fs::write(dir.join("packages/shared/src/index.js"), "module.exports = {};\n").unwrap();
+    std::fs::write(
+        dir.join("packages/shared/src/index.js"),
+        "module.exports = {};\n",
+    )
+    .unwrap();
 
     // Package: app (depends on shared)
     std::fs::create_dir_all(dir.join("packages/app/src")).unwrap();
@@ -268,11 +288,7 @@ fn test_config_ignore_files() {
     create_cargo_workspace(dir.path());
 
     // Add config that ignores .md files
-    std::fs::write(
-        dir.path().join(".affected.toml"),
-        "ignore = [\"*.md\"]\n",
-    )
-    .unwrap();
+    std::fs::write(dir.path().join(".affected.toml"), "ignore = [\"*.md\"]\n").unwrap();
 
     git_init_and_commit(dir.path());
 
@@ -294,7 +310,11 @@ fn test_file_outside_any_package() {
     git_init_and_commit(dir.path());
 
     // Change a file at root level (not in any crate)
-    git_change_and_commit(dir.path(), "scripts/deploy.sh", "#!/bin/bash\necho deploy\n");
+    git_change_and_commit(
+        dir.path(),
+        "scripts/deploy.sh",
+        "#!/bin/bash\necho deploy\n",
+    );
 
     let result = affected_core::find_affected(dir.path(), "HEAD~1").unwrap();
     assert!(result.affected.is_empty());
@@ -336,9 +356,13 @@ fn test_multiple_files_same_package() {
         .unwrap();
     Command::new("git")
         .args([
-            "-c", "user.name=Test",
-            "-c", "user.email=test@test.com",
-            "commit", "-m", "multi-file change",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@test.com",
+            "commit",
+            "-m",
+            "multi-file change",
         ])
         .current_dir(dir.path())
         .output()

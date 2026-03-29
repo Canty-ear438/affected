@@ -34,7 +34,10 @@ impl Config {
             debug!("Config loaded successfully");
             Ok(config)
         } else {
-            debug!("No .affected.toml found at {}, using defaults", root.display());
+            debug!(
+                "No .affected.toml found at {}, using defaults",
+                root.display()
+            );
             Ok(Self::default())
         }
     }
@@ -144,7 +147,9 @@ npm = "pnpm test --filter {package}"
             packages: None,
         };
 
-        let cmd = config.test_command_for(Ecosystem::Cargo, "my-crate").unwrap();
+        let cmd = config
+            .test_command_for(Ecosystem::Cargo, "my-crate")
+            .unwrap();
         assert_eq!(cmd, vec!["cargo", "nextest", "run", "-p", "my-crate"]);
     }
 

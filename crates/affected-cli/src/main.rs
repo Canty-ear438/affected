@@ -236,7 +236,11 @@ fn main() -> Result<()> {
 }
 
 /// Resolve the base ref from --base or --merge-base flags.
-fn resolve_base(root: &PathBuf, base: Option<String>, merge_base: Option<String>) -> Result<String> {
+fn resolve_base(
+    root: &PathBuf,
+    base: Option<String>,
+    merge_base: Option<String>,
+) -> Result<String> {
     if let Some(mb) = merge_base {
         affected_core::find_merge_base(root, &mb)
     } else {
@@ -244,7 +248,10 @@ fn resolve_base(root: &PathBuf, base: Option<String>, merge_base: Option<String>
     }
 }
 
-fn load_config(root: &PathBuf, config_path: Option<&std::path::Path>) -> Result<affected_core::config::Config> {
+fn load_config(
+    root: &PathBuf,
+    config_path: Option<&std::path::Path>,
+) -> Result<affected_core::config::Config> {
     match config_path {
         Some(path) => affected_core::config::Config::load_from(path),
         None => affected_core::config::Config::load(root),
@@ -323,7 +330,12 @@ fn cmd_test(
             let cmd = config
                 .package_config(name)
                 .and_then(|pc| pc.test.as_ref())
-                .map(|t| t.replace("{package}", name).split_whitespace().map(String::from).collect())
+                .map(|t| {
+                    t.replace("{package}", name)
+                        .split_whitespace()
+                        .map(String::from)
+                        .collect()
+                })
                 .or_else(|| config.test_command_for(ecosystem, name))
                 .unwrap_or_else(|| resolver.test_command(&pkg_id));
             (pkg_id, cmd)
@@ -486,12 +498,7 @@ fn cmd_detect(root: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn cmd_ci(
-    root: &PathBuf,
-    base: &str,
-    filter: Option<&str>,
-    skip: Option<&str>,
-) -> Result<()> {
+fn cmd_ci(root: &PathBuf, base: &str, filter: Option<&str>, skip: Option<&str>) -> Result<()> {
     let result = affected_core::find_affected_with_options(root, base, false, filter, skip)?;
 
     let affected_csv = result.affected.join(",");

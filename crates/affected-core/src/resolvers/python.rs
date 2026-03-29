@@ -141,12 +141,7 @@ impl PythonResolver {
                 .as_ref()
                 .and_then(|t| t.poetry.as_ref())
                 .and_then(|p| p.name.clone())
-                .or_else(|| {
-                    pyproject
-                        .project
-                        .as_ref()
-                        .and_then(|p| p.name.clone())
-                });
+                .or_else(|| pyproject.project.as_ref().and_then(|p| p.name.clone()));
 
             let name = match name {
                 Some(n) => n,
@@ -158,12 +153,7 @@ impl PythonResolver {
                 .as_ref()
                 .and_then(|t| t.poetry.as_ref())
                 .and_then(|p| p.version.clone())
-                .or_else(|| {
-                    pyproject
-                        .project
-                        .as_ref()
-                        .and_then(|p| p.version.clone())
-                });
+                .or_else(|| pyproject.project.as_ref().and_then(|p| p.version.clone()));
 
             let pkg_dir = toml_path.parent().unwrap_or(root).to_path_buf();
             let pkg_id = PackageId(name.clone());
@@ -196,12 +186,7 @@ impl PythonResolver {
                 .as_ref()
                 .and_then(|t| t.poetry.as_ref())
                 .and_then(|p| p.name.clone())
-                .or_else(|| {
-                    pyproject
-                        .project
-                        .as_ref()
-                        .and_then(|p| p.name.clone())
-                });
+                .or_else(|| pyproject.project.as_ref().and_then(|p| p.name.clone()));
 
             let from_name = match from_name {
                 Some(n) => n,
@@ -287,7 +272,12 @@ impl PythonResolver {
         }
 
         // Also include the root pyproject.toml if it has a [project] section
-        if root_pyproject.project.as_ref().and_then(|p| p.name.as_ref()).is_some() {
+        if root_pyproject
+            .project
+            .as_ref()
+            .and_then(|p| p.name.as_ref())
+            .is_some()
+        {
             pkg_tomls.push(root.join("pyproject.toml"));
         }
 
@@ -316,10 +306,7 @@ impl PythonResolver {
                 Package {
                     id: pkg_id,
                     name: name.clone(),
-                    version: pyproject
-                        .project
-                        .as_ref()
-                        .and_then(|p| p.version.clone()),
+                    version: pyproject.project.as_ref().and_then(|p| p.version.clone()),
                     path: pkg_dir,
                     manifest_path: toml_path.clone(),
                 },
@@ -395,10 +382,7 @@ impl PythonResolver {
                 Package {
                     id: pkg_id,
                     name: name.clone(),
-                    version: pyproject
-                        .project
-                        .as_ref()
-                        .and_then(|p| p.version.clone()),
+                    version: pyproject.project.as_ref().and_then(|p| p.version.clone()),
                     path: pkg_dir,
                     manifest_path: toml_path.clone(),
                 },
@@ -419,16 +403,17 @@ impl PythonResolver {
                 None => continue,
             };
 
-            if let Some(deps) = pyproject.project.as_ref().and_then(|p| p.dependencies.as_ref()) {
+            if let Some(deps) = pyproject
+                .project
+                .as_ref()
+                .and_then(|p| p.dependencies.as_ref())
+            {
                 for dep_str in deps {
                     let dep_name = parse_pep508_name(dep_str);
                     let normalized = normalize_python_name(&dep_name);
                     if workspace_names.contains(&normalized) {
                         if let Some(to_id) = name_to_id.get(&normalized) {
-                            edges.push((
-                                PackageId(from_name.clone()),
-                                to_id.clone(),
-                            ));
+                            edges.push((PackageId(from_name.clone()), to_id.clone()));
                         }
                     }
                 }
@@ -633,11 +618,7 @@ mod tests {
     fn test_scan_python_imports_nested_files() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("src/pkg")).unwrap();
-        std::fs::write(
-            dir.path().join("src/pkg/core.py"),
-            "import numpy\n",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("src/pkg/core.py"), "import numpy\n").unwrap();
 
         let imports = scan_python_imports(dir.path());
         assert!(imports.contains("numpy"));
@@ -703,10 +684,9 @@ mod tests {
         assert!(graph.packages.contains_key(&PackageId("pkg-b".into())));
 
         // pkg-a depends on pkg-b
-        assert!(graph.edges.contains(&(
-            PackageId("pkg-a".into()),
-            PackageId("pkg-b".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("pkg-a".into()), PackageId("pkg-b".into()),)));
     }
 
     #[test]
@@ -740,10 +720,9 @@ mod tests {
         assert!(graph.packages.contains_key(&PackageId("beta".into())));
 
         // alpha imports beta
-        assert!(graph.edges.contains(&(
-            PackageId("alpha".into()),
-            PackageId("beta".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("alpha".into()), PackageId("beta".into()),)));
     }
 
     #[test]
@@ -760,7 +739,10 @@ mod tests {
             "[project]\nname = \"myapp\"\n",
         )
         .unwrap();
-        assert_eq!(PythonResolver::detect_tooling(dir.path()), PythonTooling::Generic);
+        assert_eq!(
+            PythonResolver::detect_tooling(dir.path()),
+            PythonTooling::Generic
+        );
     }
 
     #[test]
@@ -771,7 +753,10 @@ mod tests {
             "[tool.poetry]\nname = \"myapp\"\nversion = \"0.1.0\"\n",
         )
         .unwrap();
-        assert_eq!(PythonResolver::detect_tooling(dir.path()), PythonTooling::Poetry);
+        assert_eq!(
+            PythonResolver::detect_tooling(dir.path()),
+            PythonTooling::Poetry
+        );
     }
 
     #[test]
@@ -782,7 +767,10 @@ mod tests {
             "[project]\nname = \"root\"\n\n[tool.uv.workspace]\nmembers = [\"packages/*\"]\n",
         )
         .unwrap();
-        assert_eq!(PythonResolver::detect_tooling(dir.path()), PythonTooling::Uv);
+        assert_eq!(
+            PythonResolver::detect_tooling(dir.path()),
+            PythonTooling::Uv
+        );
     }
 
     #[test]
@@ -817,10 +805,9 @@ mod tests {
         assert!(graph.packages.contains_key(&PackageId("pkg-b".into())));
 
         // pkg-a depends on pkg-b
-        assert!(graph.edges.contains(&(
-            PackageId("pkg-a".into()),
-            PackageId("pkg-b".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("pkg-a".into()), PackageId("pkg-b".into()),)));
     }
 
     #[test]
@@ -855,9 +842,8 @@ mod tests {
         assert!(graph.packages.contains_key(&PackageId("pkg-b".into())));
 
         // pkg-a depends on pkg-b
-        assert!(graph.edges.contains(&(
-            PackageId("pkg-a".into()),
-            PackageId("pkg-b".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("pkg-a".into()), PackageId("pkg-b".into()),)));
     }
 }

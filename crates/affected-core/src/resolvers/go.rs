@@ -41,8 +41,8 @@ impl Resolver for GoResolver {
 impl GoResolver {
     /// Resolve a Go workspace (go.work file).
     fn resolve_workspace(&self, root: &Path) -> Result<ProjectGraph> {
-        let go_work = std::fs::read_to_string(root.join("go.work"))
-            .context("Failed to read go.work")?;
+        let go_work =
+            std::fs::read_to_string(root.join("go.work")).context("Failed to read go.work")?;
 
         // Parse `use` directives from go.work
         let module_dirs = parse_go_work_uses(&go_work);
@@ -91,11 +91,11 @@ impl GoResolver {
 
     /// Resolve a single Go module (just go.mod, no workspace).
     fn resolve_single_module(&self, root: &Path) -> Result<ProjectGraph> {
-        let go_mod = std::fs::read_to_string(root.join("go.mod"))
-            .context("Failed to read go.mod")?;
+        let go_mod =
+            std::fs::read_to_string(root.join("go.mod")).context("Failed to read go.mod")?;
 
-        let module_path = parse_go_mod_module(&go_mod)
-            .context("No module directive found in go.mod")?;
+        let module_path =
+            parse_go_mod_module(&go_mod).context("No module directive found in go.mod")?;
 
         let pkg_id = PackageId(".".to_string());
         let mut packages = HashMap::new();
@@ -256,10 +256,7 @@ mod tests {
     #[test]
     fn test_parse_go_mod_module_with_whitespace() {
         let content = "  module   example.com/foo  \n";
-        assert_eq!(
-            parse_go_mod_module(content),
-            Some("example.com/foo".into())
-        );
+        assert_eq!(parse_go_mod_module(content), Some("example.com/foo".into()));
     }
 
     #[test]

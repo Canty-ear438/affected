@@ -70,7 +70,10 @@ pub fn detect_ecosystems(root: &Path) -> Result<Vec<Ecosystem>> {
         if let Ok(paths) = glob::glob(pattern.to_str().unwrap_or("")) {
             let count = paths.filter_map(|p| p.ok()).count();
             if count >= 2 {
-                debug!("Detected Python monorepo ({} pyproject.toml files found)", count);
+                debug!(
+                    "Detected Python monorepo ({} pyproject.toml files found)",
+                    count
+                );
                 detected.push(Ecosystem::Python);
             }
         }
@@ -164,11 +167,7 @@ mod tests {
     #[test]
     fn test_detect_yarn_workspace() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir.path().join(".yarnrc.yml"),
-            "nodeLinker: pnp\n",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join(".yarnrc.yml"), "nodeLinker: pnp\n").unwrap();
 
         let ecosystems = detect_ecosystems(dir.path()).unwrap();
         assert_eq!(ecosystems, vec![Ecosystem::Yarn]);
@@ -208,11 +207,7 @@ mod tests {
     #[test]
     fn test_detect_multiple_ecosystems() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir.path().join("Cargo.toml"),
-            "[workspace]\nmembers = []\n",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("Cargo.toml"), "[workspace]\nmembers = []\n").unwrap();
         std::fs::write(dir.path().join("go.mod"), "module example.com/x\n").unwrap();
 
         let ecosystems = detect_ecosystems(dir.path()).unwrap();

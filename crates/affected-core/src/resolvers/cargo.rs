@@ -111,10 +111,7 @@ impl Resolver for CargoResolver {
 
                 for dep_id in &node.dependencies {
                     if let Some(to_name) = id_to_name.get(dep_id) {
-                        edges.push((
-                            PackageId(from_name.clone()),
-                            PackageId(to_name.clone()),
-                        ));
+                        edges.push((PackageId(from_name.clone()), PackageId(to_name.clone())));
                     }
                 }
             }
@@ -196,8 +193,12 @@ mod tests {
 
         let graph = CargoResolver.resolve(root).unwrap();
         assert!(graph.packages.len() >= 2);
-        assert!(graph.packages.contains_key(&PackageId("affected-core".into())));
-        assert!(graph.packages.contains_key(&PackageId("affected-cli".into())));
+        assert!(graph
+            .packages
+            .contains_key(&PackageId("affected-core".into())));
+        assert!(graph
+            .packages
+            .contains_key(&PackageId("affected-cli".into())));
         // affected-cli depends on affected-core
         assert!(graph.edges.contains(&(
             PackageId("affected-cli".into()),
@@ -218,10 +219,8 @@ mod tests {
         }
 
         let graph = CargoResolver.resolve(root).unwrap();
-        let result = CargoResolver.package_for_file(
-            &graph,
-            &PathBuf::from("crates/affected-core/src/lib.rs"),
-        );
+        let result = CargoResolver
+            .package_for_file(&graph, &PathBuf::from("crates/affected-core/src/lib.rs"));
         assert_eq!(result, Some(PackageId("affected-core".into())));
     }
 }

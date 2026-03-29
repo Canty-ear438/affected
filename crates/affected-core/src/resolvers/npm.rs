@@ -184,10 +184,9 @@ impl NpmResolver {
 
         // Fall back to package.json workspaces
         let pkg_path = root.join("package.json");
-        let content = std::fs::read_to_string(&pkg_path)
-            .context("No package.json found")?;
-        let root_pkg: RootPackageJson = serde_json::from_str(&content)
-            .context("Failed to parse root package.json")?;
+        let content = std::fs::read_to_string(&pkg_path).context("No package.json found")?;
+        let root_pkg: RootPackageJson =
+            serde_json::from_str(&content).context("Failed to parse root package.json")?;
 
         match root_pkg.workspaces {
             Some(WorkspacesField::Array(globs)) => Ok(globs),
@@ -269,11 +268,7 @@ mod tests {
     #[test]
     fn test_detect_no_workspaces() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir.path().join("package.json"),
-            r#"{"name": "solo"}"#,
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("package.json"), r#"{"name": "solo"}"#).unwrap();
         assert!(!NpmResolver.detect(dir.path()));
     }
 
@@ -290,8 +285,12 @@ mod tests {
 
         let graph = NpmResolver.resolve(dir.path()).unwrap();
         assert_eq!(graph.packages.len(), 2);
-        assert!(graph.packages.contains_key(&PackageId("@scope/pkg-a".into())));
-        assert!(graph.packages.contains_key(&PackageId("@scope/pkg-b".into())));
+        assert!(graph
+            .packages
+            .contains_key(&PackageId("@scope/pkg-a".into())));
+        assert!(graph
+            .packages
+            .contains_key(&PackageId("@scope/pkg-b".into())));
 
         // pkg-a depends on pkg-b
         assert!(graph.edges.contains(&(
@@ -326,27 +325,18 @@ mod tests {
 
         let graph = NpmResolver.resolve(dir.path()).unwrap();
         assert_eq!(graph.packages.len(), 2);
-        assert!(graph.edges.contains(&(
-            PackageId("bar".into()),
-            PackageId("foo".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("bar".into()), PackageId("foo".into()),)));
     }
 
     #[test]
     fn test_expand_globs() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(dir.path().join("packages/a")).unwrap();
-        std::fs::write(
-            dir.path().join("packages/a/package.json"),
-            "{}",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("packages/a/package.json"), "{}").unwrap();
         std::fs::create_dir_all(dir.path().join("packages/b")).unwrap();
-        std::fs::write(
-            dir.path().join("packages/b/package.json"),
-            "{}",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("packages/b/package.json"), "{}").unwrap();
 
         let globs = vec!["packages/*".to_string()];
         let dirs = NpmResolver.expand_globs(dir.path(), &globs).unwrap();
@@ -383,9 +373,8 @@ mod tests {
         .unwrap();
 
         let graph = NpmResolver.resolve(dir.path()).unwrap();
-        assert!(graph.edges.contains(&(
-            PackageId("app".into()),
-            PackageId("lib".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("app".into()), PackageId("lib".into()),)));
     }
 }

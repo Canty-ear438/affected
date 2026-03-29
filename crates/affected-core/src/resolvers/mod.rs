@@ -49,10 +49,7 @@ pub fn detect_resolver(root: &Path) -> Result<Box<dyn Resolver>> {
             return Ok(resolver);
         }
     }
-    anyhow::bail!(
-        "No supported project type detected at {}",
-        root.display()
-    )
+    anyhow::bail!("No supported project type detected at {}", root.display())
 }
 
 /// Map a file to its owning package using longest-prefix directory matching.
@@ -121,10 +118,7 @@ mod tests {
     #[test]
     fn test_file_to_package_longest_prefix() {
         // Nested packages: "crates/foo" and "crates/foo/bar"
-        let pg = make_project_graph(&[
-            ("foo", "crates/foo"),
-            ("foo-bar", "crates/foo/bar"),
-        ]);
+        let pg = make_project_graph(&[("foo", "crates/foo"), ("foo-bar", "crates/foo/bar")]);
 
         // File in nested package should match the deeper one
         let result = file_to_package(&pg, &PathBuf::from("crates/foo/bar/src/lib.rs"));
@@ -145,11 +139,7 @@ mod tests {
     #[test]
     fn test_detect_resolver_cargo() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir.path().join("Cargo.toml"),
-            "[workspace]\nmembers = []\n",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("Cargo.toml"), "[workspace]\nmembers = []\n").unwrap();
 
         let resolver = detect_resolver(dir.path()).unwrap();
         assert_eq!(resolver.ecosystem(), Ecosystem::Cargo);
