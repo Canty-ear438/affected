@@ -2,6 +2,36 @@ use assert_cmd::Command;
 use predicates::prelude::*;
 use std::path::Path;
 
+/// Run a git command in the given directory and assert it succeeds.
+fn git(dir: &Path, args: &[&str]) {
+    let output = std::process::Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "git {} failed: {}",
+        args.join(" "),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn git_commit(dir: &Path, msg: &str) {
+    git(
+        dir,
+        &[
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@test.com",
+            "commit",
+            "-m",
+            msg,
+        ],
+    );
+}
+
 /// Helper: create a Cargo workspace in a temp dir with git.
 fn setup_cargo_workspace(dir: &Path) {
     std::fs::write(
@@ -34,33 +64,16 @@ members = ["crates/core", "crates/app"]
     .unwrap();
 
     // Git init + commit
-    std::process::Command::new("git")
-        .args(["init"])
-        .current_dir(dir)
-        .output()
-        .unwrap();
-    std::process::Command::new("git")
-        .args(["add", "-A"])
-        .current_dir(dir)
-        .output()
-        .unwrap();
-    std::process::Command::new("git")
-        .args([
-            "-c",
-            "user.name=Test",
-            "-c",
-            "user.email=test@test.com",
-            "commit",
-            "-m",
-            "init",
-        ])
-        .current_dir(dir)
-        .output()
-        .unwrap();
+    git(dir, &["init"]);
+    git(dir, &["add", "-A"]);
+    git_commit(dir, "init");
 }
 
 fn affected_cmd() -> Command {
-    Command::cargo_bin("affected").unwrap()
+    let mut cmd = Command::cargo_bin("affected").unwrap();
+    // Prevent tests from writing to the real GITHUB_OUTPUT file in CI
+    cmd.env_remove("GITHUB_OUTPUT");
+    cmd
 }
 
 // ─── detect ─────────────────────────────────────────────────
@@ -145,30 +158,13 @@ fn test_cli_list_with_changes() {
     let dir = tempfile::tempdir().unwrap();
     setup_cargo_workspace(dir.path());
 
-    // Make a change
     std::fs::write(
         dir.path().join("crates/core/src/lib.rs"),
         "pub fn hello() { /* v2 */ }\n",
     )
     .unwrap();
-    std::process::Command::new("git")
-        .args(["add", "-A"])
-        .current_dir(dir.path())
-        .output()
-        .unwrap();
-    std::process::Command::new("git")
-        .args([
-            "-c",
-            "user.name=Test",
-            "-c",
-            "user.email=test@test.com",
-            "commit",
-            "-m",
-            "change core",
-        ])
-        .current_dir(dir.path())
-        .output()
-        .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change core");
 
     affected_cmd()
         .args(["list", "--base", "HEAD~1", "--root"])
@@ -184,30 +180,13 @@ fn test_cli_list_json() {
     let dir = tempfile::tempdir().unwrap();
     setup_cargo_workspace(dir.path());
 
-    // Make a change
     std::fs::write(
         dir.path().join("crates/core/src/lib.rs"),
         "pub fn hello() { /* changed */ }\n",
     )
     .unwrap();
-    std::process::Command::new("git")
-        .args(["add", "-A"])
-        .current_dir(dir.path())
-        .output()
-        .unwrap();
-    std::process::Command::new("git")
-        .args([
-            "-c",
-            "user.name=Test",
-            "-c",
-            "user.email=test@test.com",
-            "commit",
-            "-m",
-            "change",
-        ])
-        .current_dir(dir.path())
-        .output()
-        .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change");
 
     let output = affected_cmd()
         .args(["list", "--base", "HEAD~1", "--json", "--root"])
@@ -230,30 +209,13 @@ fn test_cli_test_dry_run() {
     let dir = tempfile::tempdir().unwrap();
     setup_cargo_workspace(dir.path());
 
-    // Make a change
     std::fs::write(
         dir.path().join("crates/app/src/main.rs"),
         "fn main() { println!(\"v2\"); }\n",
     )
     .unwrap();
-    std::process::Command::new("git")
-        .args(["add", "-A"])
-        .current_dir(dir.path())
-        .output()
-        .unwrap();
-    std::process::Command::new("git")
-        .args([
-            "-c",
-            "user.name=Test",
-            "-c",
-            "user.email=test@test.com",
-            "commit",
-            "-m",
-            "change app",
-        ])
-        .current_dir(dir.path())
-        .output()
-        .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change app");
 
     affected_cmd()
         .args(["test", "--base", "HEAD~1", "--dry-run", "--root"])
@@ -284,30 +246,13 @@ fn test_cli_ci_matrix_output() {
     let dir = tempfile::tempdir().unwrap();
     setup_cargo_workspace(dir.path());
 
-    // Make a change to core
     std::fs::write(
         dir.path().join("crates/core/src/lib.rs"),
         "pub fn hello() { /* ci-test */ }\n",
     )
     .unwrap();
-    std::process::Command::new("git")
-        .args(["add", "-A"])
-        .current_dir(dir.path())
-        .output()
-        .unwrap();
-    std::process::Command::new("git")
-        .args([
-            "-c",
-            "user.name=Test",
-            "-c",
-            "user.email=test@test.com",
-            "commit",
-            "-m",
-            "change core",
-        ])
-        .current_dir(dir.path())
-        .output()
-        .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change core");
 
     let output = affected_cmd()
         .args(["ci", "--base", "HEAD~1", "--root"])
@@ -359,30 +304,13 @@ fn test_cli_run_dry_run() {
     let dir = tempfile::tempdir().unwrap();
     setup_cargo_workspace(dir.path());
 
-    // Make a change
     std::fs::write(
         dir.path().join("crates/core/src/lib.rs"),
         "pub fn hello() { /* run-test */ }\n",
     )
     .unwrap();
-    std::process::Command::new("git")
-        .args(["add", "-A"])
-        .current_dir(dir.path())
-        .output()
-        .unwrap();
-    std::process::Command::new("git")
-        .args([
-            "-c",
-            "user.name=Test",
-            "-c",
-            "user.email=test@test.com",
-            "commit",
-            "-m",
-            "change core",
-        ])
-        .current_dir(dir.path())
-        .output()
-        .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change core");
 
     affected_cmd()
         .args([
