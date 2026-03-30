@@ -63,8 +63,9 @@ members = ["crates/core", "crates/app"]
     )
     .unwrap();
 
-    // Git init + commit
+    // Git init + commit (disable autocrlf to avoid Windows line-ending issues)
     git(dir, &["init"]);
+    git(dir, &["config", "core.autocrlf", "false"]);
     git(dir, &["add", "-A"]);
     git_commit(dir, "init");
 }
