@@ -22,17 +22,13 @@ impl Resolver for SbtResolver {
 
     fn resolve(&self, root: &Path) -> Result<ProjectGraph> {
         let build_sbt_path = root.join("build.sbt");
-        let content = std::fs::read_to_string(&build_sbt_path)
-            .context("Failed to read build.sbt")?;
+        let content =
+            std::fs::read_to_string(&build_sbt_path).context("Failed to read build.sbt")?;
 
         let projects = parse_sbt_projects(&content);
         let dependencies = parse_sbt_dependencies(&content);
 
-        tracing::debug!(
-            "Sbt: found {} projects: {:?}",
-            projects.len(),
-            projects
-        );
+        tracing::debug!("Sbt: found {} projects: {:?}", projects.len(), projects);
 
         // Build a mapping from variable name to PackageId
         let var_to_id: HashMap<String, PackageId> = projects
@@ -118,13 +114,11 @@ fn parse_sbt_projects(content: &str) -> Vec<(String, String)> {
 
     // Pattern for `lazy val foo = (project in file("bar"))`
     let re_with_file =
-        Regex::new(r#"lazy\s+val\s+(\w+)\s*=\s*\(?\s*project\s+in\s+file\("([^"]+)"\)"#)
-            .unwrap();
+        Regex::new(r#"lazy\s+val\s+(\w+)\s*=\s*\(?\s*project\s+in\s+file\("([^"]+)"\)"#).unwrap();
 
     // Pattern for bare `lazy val foo = project` (end of line or followed by newline + dot)
     let re_bare_eol = Regex::new(r#"lazy\s+val\s+(\w+)\s*=\s*\(?\s*project\s*$"#).unwrap();
-    let re_bare_chain =
-        Regex::new(r#"lazy\s+val\s+(\w+)\s*=\s*\(?\s*project\s*\n\s*\."#).unwrap();
+    let re_bare_chain = Regex::new(r#"lazy\s+val\s+(\w+)\s*=\s*\(?\s*project\s*\n\s*\."#).unwrap();
 
     // First, find all projects with explicit file("...") declarations
     for cap in re_with_file.captures_iter(content) {

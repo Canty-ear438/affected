@@ -95,10 +95,7 @@ impl Resolver for ElixirResolver {
 
     fn test_command(&self, package_id: &PackageId) -> Vec<String> {
         // package_id is "apps/<dir_name>"; extract the app directory name
-        let app_name = package_id
-            .0
-            .strip_prefix("apps/")
-            .unwrap_or(&package_id.0);
+        let app_name = package_id.0.strip_prefix("apps/").unwrap_or(&package_id.0);
         vec![
             "mix".into(),
             "cmd".into(),
@@ -131,8 +128,7 @@ fn parse_umbrella_deps(content: &str) -> Vec<String> {
     let mut deps = Vec::new();
 
     // Pattern 1: {:dep_name, in_umbrella: true}
-    let re_umbrella =
-        Regex::new(r#"\{:([\w]+),\s*in_umbrella:\s*true\}"#).expect("invalid regex");
+    let re_umbrella = Regex::new(r#"\{:([\w]+),\s*in_umbrella:\s*true\}"#).expect("invalid regex");
     for caps in re_umbrella.captures_iter(content) {
         if let Some(m) = caps.get(1) {
             deps.push(m.as_str().to_string());
@@ -343,27 +339,19 @@ end"#,
 
         // 3 packages discovered
         assert_eq!(graph.packages.len(), 3);
-        assert!(graph
-            .packages
-            .contains_key(&PackageId("apps/core".into())));
+        assert!(graph.packages.contains_key(&PackageId("apps/core".into())));
         assert!(graph
             .packages
             .contains_key(&PackageId("apps/shared".into())));
         assert!(graph.packages.contains_key(&PackageId("apps/api".into())));
 
         // Check package names
-        assert_eq!(
-            graph.packages[&PackageId("apps/core".into())].name,
-            "core"
-        );
+        assert_eq!(graph.packages[&PackageId("apps/core".into())].name, "core");
         assert_eq!(
             graph.packages[&PackageId("apps/shared".into())].name,
             "shared"
         );
-        assert_eq!(
-            graph.packages[&PackageId("apps/api".into())].name,
-            "api"
-        );
+        assert_eq!(graph.packages[&PackageId("apps/api".into())].name, "api");
 
         // shared depends on core
         assert!(graph.edges.contains(&(
@@ -372,10 +360,9 @@ end"#,
         )));
 
         // api depends on core and shared
-        assert!(graph.edges.contains(&(
-            PackageId("apps/api".into()),
-            PackageId("apps/core".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("apps/api".into()), PackageId("apps/core".into()),)));
         assert!(graph.edges.contains(&(
             PackageId("apps/api".into()),
             PackageId("apps/shared".into()),

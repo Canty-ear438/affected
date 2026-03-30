@@ -144,11 +144,7 @@ impl Resolver for DotnetResolver {
     }
 
     fn test_command(&self, package_id: &PackageId) -> Vec<String> {
-        vec![
-            "dotnet".into(),
-            "test".into(),
-            package_id.0.clone(),
-        ]
+        vec!["dotnet".into(), "test".into(), package_id.0.clone()]
     }
 }
 
@@ -156,10 +152,8 @@ impl Resolver for DotnetResolver {
 ///
 /// Returns a vec of (project_name, normalized_relative_path) for `.csproj`, `.fsproj`, and `.vbproj` files.
 fn parse_sln_projects(sln_content: &str) -> Result<Vec<(String, String)>> {
-    let re = Regex::new(
-        r#"Project\("[^"]*"\)\s*=\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"[^"]*""#,
-    )
-    .context("Failed to compile .sln regex")?;
+    let re = Regex::new(r#"Project\("[^"]*"\)\s*=\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"[^"]*""#)
+        .context("Failed to compile .sln regex")?;
 
     let mut projects = Vec::new();
     for line in sln_content.lines() {
@@ -167,10 +161,7 @@ fn parse_sln_projects(sln_content: &str) -> Result<Vec<(String, String)>> {
             let name = caps[1].to_string();
             let path = caps[2].replace('\\', "/");
 
-            if path.ends_with(".csproj")
-                || path.ends_with(".fsproj")
-                || path.ends_with(".vbproj")
-            {
+            if path.ends_with(".csproj") || path.ends_with(".fsproj") || path.ends_with(".vbproj") {
                 projects.push((name, path));
             }
         }
@@ -195,8 +186,7 @@ fn parse_project_references(xml: &str) -> Result<Vec<String>> {
                     for attr in e.attributes().flatten() {
                         let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
                         if key == "Include" {
-                            let value = String::from_utf8_lossy(&attr.value)
-                                .replace('\\', "/");
+                            let value = String::from_utf8_lossy(&attr.value).replace('\\', "/");
                             references.push(value);
                         }
                     }
@@ -334,15 +324,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "tests/Tests/Tests.
             .contains_key(&PackageId("tests/Tests".into())));
 
         // Api depends on Core
-        assert!(graph.edges.contains(&(
-            PackageId("src/Api".into()),
-            PackageId("src/Core".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("src/Api".into()), PackageId("src/Core".into()),)));
         // Tests depends on Api
-        assert!(graph.edges.contains(&(
-            PackageId("tests/Tests".into()),
-            PackageId("src/Api".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("tests/Tests".into()), PackageId("src/Api".into()),)));
     }
 
     #[test]
@@ -426,10 +414,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Beta", "src/Beta/Beta.cspro
         assert!(graph.packages.contains_key(&PackageId("src/App".into())));
 
         // App depends on Lib
-        assert!(graph.edges.contains(&(
-            PackageId("src/App".into()),
-            PackageId("src/Lib".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("src/App".into()), PackageId("src/Lib".into()),)));
     }
 
     #[test]

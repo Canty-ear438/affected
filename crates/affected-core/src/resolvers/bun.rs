@@ -306,12 +306,8 @@ mod tests {
 
         let graph = BunResolver.resolve(dir.path()).unwrap();
         assert_eq!(graph.packages.len(), 2);
-        assert!(graph
-            .packages
-            .contains_key(&PackageId("@app/pkg-a".into())));
-        assert!(graph
-            .packages
-            .contains_key(&PackageId("@app/pkg-b".into())));
+        assert!(graph.packages.contains_key(&PackageId("@app/pkg-a".into())));
+        assert!(graph.packages.contains_key(&PackageId("@app/pkg-b".into())));
 
         // pkg-a depends on pkg-b
         assert!(graph.edges.contains(&(

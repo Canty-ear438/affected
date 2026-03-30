@@ -411,7 +411,11 @@ mod tests {
     #[test]
     fn test_detect_dotnet_solution() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("MySolution.sln"), "Microsoft Visual Studio Solution File").unwrap();
+        std::fs::write(
+            dir.path().join("MySolution.sln"),
+            "Microsoft Visual Studio Solution File",
+        )
+        .unwrap();
 
         let ecosystems = detect_ecosystems(dir.path()).unwrap();
         assert!(ecosystems.contains(&Ecosystem::Dotnet));
@@ -465,7 +469,11 @@ mod tests {
     #[test]
     fn test_detect_elixir_umbrella() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("mix.exs"), "defmodule Root.MixProject do\nend").unwrap();
+        std::fs::write(
+            dir.path().join("mix.exs"),
+            "defmodule Root.MixProject do\nend",
+        )
+        .unwrap();
         std::fs::create_dir_all(dir.path().join("apps")).unwrap();
 
         let ecosystems = detect_ecosystems(dir.path()).unwrap();

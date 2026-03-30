@@ -67,8 +67,7 @@ impl SwiftResolver {
     /// Resolve a single Package.swift with multiple targets.
     fn resolve_multi_target(&self, root: &Path) -> Result<ProjectGraph> {
         let manifest = root.join("Package.swift");
-        let content = std::fs::read_to_string(&manifest)
-            .context("Failed to read Package.swift")?;
+        let content = std::fs::read_to_string(&manifest).context("Failed to read Package.swift")?;
 
         let targets = parse_swift_targets(&content);
 
@@ -119,8 +118,7 @@ impl SwiftResolver {
     fn resolve_multi_package(&self, root: &Path) -> Result<ProjectGraph> {
         let mut packages = HashMap::new();
 
-        let entries = std::fs::read_dir(root)
-            .context("Failed to read project root directory")?;
+        let entries = std::fs::read_dir(root).context("Failed to read project root directory")?;
 
         for entry in entries {
             let entry = entry?;

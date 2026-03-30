@@ -187,10 +187,7 @@ impl Resolver for DartResolver {
 
             for dep_name in all_deps {
                 if workspace_names.contains(dep_name.as_str()) {
-                    edges.push((
-                        PackageId(from_name.clone()),
-                        PackageId(dep_name),
-                    ));
+                    edges.push((PackageId(from_name.clone()), PackageId(dep_name)));
                 }
             }
         }
@@ -252,8 +249,8 @@ impl DartResolver {
     /// ```
     fn resolve_workspace(&self, root: &Path) -> Result<Vec<PathBuf>> {
         let pubspec_path = root.join("pubspec.yaml");
-        let content = std::fs::read_to_string(&pubspec_path)
-            .context("Failed to read root pubspec.yaml")?;
+        let content =
+            std::fs::read_to_string(&pubspec_path).context("Failed to read root pubspec.yaml")?;
 
         let mut dirs = Vec::new();
         let mut in_workspace = false;
@@ -302,8 +299,7 @@ impl DartResolver {
     /// ```
     fn resolve_melos(&self, root: &Path) -> Result<Vec<PathBuf>> {
         let melos_path = root.join("melos.yaml");
-        let content = std::fs::read_to_string(&melos_path)
-            .context("Failed to read melos.yaml")?;
+        let content = std::fs::read_to_string(&melos_path).context("Failed to read melos.yaml")?;
 
         let mut globs = Vec::new();
         let mut in_packages = false;
@@ -423,11 +419,7 @@ mod tests {
         )
         .unwrap();
 
-        std::fs::write(
-            dir.join("pubspec.yaml"),
-            "name: my_project\n",
-        )
-        .unwrap();
+        std::fs::write(dir.join("pubspec.yaml"), "name: my_project\n").unwrap();
 
         // packages/alpha
         std::fs::create_dir_all(dir.join("packages/alpha")).unwrap();
@@ -440,11 +432,7 @@ mod tests {
 
         // packages/beta
         std::fs::create_dir_all(dir.join("packages/beta")).unwrap();
-        std::fs::write(
-            dir.join("packages/beta/pubspec.yaml"),
-            "name: beta\n",
-        )
-        .unwrap();
+        std::fs::write(dir.join("packages/beta/pubspec.yaml"), "name: beta\n").unwrap();
     }
 
     #[test]
@@ -467,18 +455,10 @@ mod tests {
 
         // Two subdirs with pubspec.yaml, no workspace key, no melos.yaml
         std::fs::create_dir_all(dir.path().join("app_a")).unwrap();
-        std::fs::write(
-            dir.path().join("app_a/pubspec.yaml"),
-            "name: app_a\n",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("app_a/pubspec.yaml"), "name: app_a\n").unwrap();
 
         std::fs::create_dir_all(dir.path().join("app_b")).unwrap();
-        std::fs::write(
-            dir.path().join("app_b/pubspec.yaml"),
-            "name: app_b\n",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("app_b/pubspec.yaml"), "name: app_b\n").unwrap();
 
         assert!(DartResolver.detect(dir.path()));
     }
@@ -491,11 +471,7 @@ mod tests {
 
         // Single pubspec.yaml without workspace key is not enough
         let dir2 = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir2.path().join("pubspec.yaml"),
-            "name: solo_app\n",
-        )
-        .unwrap();
+        std::fs::write(dir2.path().join("pubspec.yaml"), "name: solo_app\n").unwrap();
         assert!(!DartResolver.detect(dir2.path()));
 
         // Single subdir with pubspec.yaml is not enough for generic mode
@@ -522,10 +498,9 @@ mod tests {
         assert!(graph.packages.contains_key(&PackageId("api".into())));
 
         // api depends on core
-        assert!(graph.edges.contains(&(
-            PackageId("api".into()),
-            PackageId("core".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("api".into()), PackageId("core".into()),)));
 
         // Verify paths
         let core_pkg = &graph.packages[&PackageId("core".into())];
@@ -548,10 +523,9 @@ mod tests {
         assert!(graph.packages.contains_key(&PackageId("beta".into())));
 
         // alpha depends on beta
-        assert!(graph.edges.contains(&(
-            PackageId("alpha".into()),
-            PackageId("beta".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("alpha".into()), PackageId("beta".into()),)));
     }
 
     #[test]
@@ -614,18 +588,13 @@ flutter:
         .unwrap();
 
         std::fs::create_dir_all(dir.path().join("pkg_b")).unwrap();
-        std::fs::write(
-            dir.path().join("pkg_b/pubspec.yaml"),
-            "name: pkg_b\n",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("pkg_b/pubspec.yaml"), "name: pkg_b\n").unwrap();
 
         let graph = DartResolver.resolve(dir.path()).unwrap();
         assert_eq!(graph.packages.len(), 2);
-        assert!(graph.edges.contains(&(
-            PackageId("pkg_a".into()),
-            PackageId("pkg_b".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("pkg_a".into()), PackageId("pkg_b".into()),)));
     }
 
     #[test]
@@ -639,11 +608,7 @@ flutter:
         .unwrap();
 
         std::fs::create_dir_all(dir.path().join("packages/lib")).unwrap();
-        std::fs::write(
-            dir.path().join("packages/lib/pubspec.yaml"),
-            "name: lib\n",
-        )
-        .unwrap();
+        std::fs::write(dir.path().join("packages/lib/pubspec.yaml"), "name: lib\n").unwrap();
 
         std::fs::create_dir_all(dir.path().join("packages/app")).unwrap();
         std::fs::write(
@@ -654,9 +619,8 @@ flutter:
         .unwrap();
 
         let graph = DartResolver.resolve(dir.path()).unwrap();
-        assert!(graph.edges.contains(&(
-            PackageId("app".into()),
-            PackageId("lib".into()),
-        )));
+        assert!(graph
+            .edges
+            .contains(&(PackageId("app".into()), PackageId("lib".into()),)));
     }
 }

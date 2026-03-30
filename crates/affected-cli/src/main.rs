@@ -372,9 +372,7 @@ fn main() -> Result<()> {
             merge_base,
         } => {
             let base_ref = match (&base, &merge_base) {
-                (Some(_), _) | (_, Some(_)) => {
-                    Some(resolve_base(&root, base, merge_base)?)
-                }
+                (Some(_), _) | (_, Some(_)) => Some(resolve_base(&root, base, merge_base)?),
                 _ => None,
             };
             cmd_graph(&root, dot, base_ref.as_deref())
@@ -388,19 +386,19 @@ fn main() -> Result<()> {
             format,
         } => {
             let base_ref = resolve_base(&root, base, merge_base)?;
-            cmd_ci(
-                &root,
-                &base_ref,
-                filter.as_deref(),
-                skip.as_deref(),
-                format,
-            )
+            cmd_ci(&root, &base_ref, filter.as_deref(), skip.as_deref(), format)
         }
         Commands::Init { non_interactive } => cmd_init(&root, non_interactive),
         Commands::Watch {
             subcommand,
             debounce,
-        } => cmd_watch(&root, subcommand, debounce, cli.config.as_deref(), cli.quiet),
+        } => cmd_watch(
+            &root,
+            subcommand,
+            debounce,
+            cli.config.as_deref(),
+            cli.quiet,
+        ),
         Commands::Run {
             command,
             base,
@@ -738,8 +736,7 @@ fn cmd_graph(root: &std::path::Path, dot: bool, base: Option<&str>) -> Result<()
 
     // Get affected packages if base is specified
     let affected_set: std::collections::HashSet<String> = if let Some(base_ref) = base {
-        let result =
-            affected_core::find_affected_with_options(root, base_ref, false, None, None)?;
+        let result = affected_core::find_affected_with_options(root, base_ref, false, None, None)?;
         result.affected.into_iter().collect()
     } else {
         std::collections::HashSet::new()
@@ -799,7 +796,14 @@ fn cmd_graph(root: &std::path::Path, dot: bool, base: Option<&str>) -> Result<()
 
     for (i, root_pkg) in roots.iter().enumerate() {
         let is_last_root = i == roots.len() - 1;
-        render_tree_node(root_pkg, "", is_last_root, &children, &affected_set, &mut std::collections::HashSet::new());
+        render_tree_node(
+            root_pkg,
+            "",
+            is_last_root,
+            &children,
+            &affected_set,
+            &mut std::collections::HashSet::new(),
+        );
     }
 
     // Show isolated packages (no edges at all)
@@ -817,7 +821,12 @@ fn cmd_graph(root: &std::path::Path, dot: bool, base: Option<&str>) -> Result<()
             } else {
                 String::new()
             };
-            println!("  {}{} {}", name.cyan(), marker, "(no dependencies)".dimmed());
+            println!(
+                "  {}{} {}",
+                name.cyan(),
+                marker,
+                "(no dependencies)".dimmed()
+            );
         }
     }
 
@@ -864,7 +873,14 @@ fn render_tree_node(
     if let Some(deps) = children.get(name) {
         for (j, dep) in deps.iter().enumerate() {
             let is_last_child = j == deps.len() - 1;
-            render_tree_node(dep, &child_prefix, is_last_child, children, affected, visited);
+            render_tree_node(
+                dep,
+                &child_prefix,
+                is_last_child,
+                children,
+                affected,
+                visited,
+            );
         }
     }
 }
@@ -1023,11 +1039,7 @@ fn cmd_init(root: &std::path::Path, non_interactive: bool) -> Result<()> {
 
     if !non_interactive {
         if let Some(ref eco) = ecosystem_name {
-            println!(
-                "  {} Detected ecosystem: {}",
-                "✓".green(),
-                eco.cyan()
-            );
+            println!("  {} Detected ecosystem: {}", "✓".green(), eco.cyan());
         } else {
             println!(
                 "  {} No ecosystem auto-detected. Config will use defaults.",
@@ -1074,9 +1086,8 @@ fn cmd_init(root: &std::path::Path, non_interactive: bool) -> Result<()> {
         .collect::<Vec<_>>()
         .join(", ");
 
-    let mut config_content = String::from(
-        "# .affected.toml — configuration for the `affected` CLI\n\n",
-    );
+    let mut config_content =
+        String::from("# .affected.toml — configuration for the `affected` CLI\n\n");
 
     config_content.push_str(&format!("ignore = [{}]\n\n", ignore_str));
     config_content.push_str("[test]\n");
@@ -1122,10 +1133,9 @@ fn cmd_watch(
     let mut debouncer = new_debouncer(debounce_dur, tx)?;
 
     // Watch the project root recursively
-    debouncer.watcher().watch(
-        root,
-        notify::RecursiveMode::Recursive,
-    )?;
+    debouncer
+        .watcher()
+        .watch(root, notify::RecursiveMode::Recursive)?;
 
     // Directories to ignore
     let ignore_dirs: Vec<&str> = vec![".git", "target", "node_modules", "_build", ".dart_tool"];
@@ -1147,19 +1157,15 @@ fn cmd_watch(
                         return false;
                     }
                     let path_str = event.path.to_string_lossy();
-                    !ignore_dirs.iter().any(|d| path_str.contains(&format!("/{}/", d)))
+                    !ignore_dirs
+                        .iter()
+                        .any(|d| path_str.contains(&format!("/{}/", d)))
                 });
 
                 if relevant {
-                    println!(
-                        "\n{} Change detected, re-running...\n",
-                        "↻".cyan().bold()
-                    );
+                    println!("\n{} Change detected, re-running...\n", "↻".cyan().bold());
                     let _ = run_watchable(&subcommand, root, config_path, quiet);
-                    println!(
-                        "\n{} Watching for changes...",
-                        "👀".to_string().dimmed()
-                    );
+                    println!("\n{} Watching for changes...", "👀".to_string().dimmed());
                 }
             }
             Ok(Err(error)) => {
