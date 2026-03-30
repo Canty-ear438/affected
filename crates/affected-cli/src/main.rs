@@ -208,7 +208,7 @@ fn main() -> Result<()> {
         .without_time()
         .init();
 
-    let root = std::fs::canonicalize(&cli.root)?;
+    let root = dunce::canonicalize(&cli.root)?;
 
     match cli.command {
         Commands::Test {
