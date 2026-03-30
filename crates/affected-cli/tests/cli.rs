@@ -30,6 +30,8 @@ fn git_commit(dir: &Path, msg: &str) {
             msg,
         ],
     );
+    // On Windows, ensure git index is flushed before libgit2 reads it
+    git(dir, &["status"]);
 }
 
 /// Helper: create a Cargo workspace in a temp dir with git.
