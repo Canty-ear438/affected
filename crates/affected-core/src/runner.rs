@@ -489,6 +489,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)] // Timeout enforcement uses SIGKILL, which is Unix-only
     fn test_timeout_enforcement() {
         let dir = tempfile::tempdir().unwrap();
         let runner = make_runner(dir.path(), false, 1, Some(Duration::from_secs(1)));
