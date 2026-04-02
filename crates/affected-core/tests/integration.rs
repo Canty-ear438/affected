@@ -385,19 +385,19 @@ fn test_reverse_bfs_with_real_cargo_graph() {
     let dep_graph = DepGraph::from_project_graph(&graph);
 
     // If core changes, all 3 are affected
-    let changed: HashSet<_> = [PackageId("core".into())].into();
+    let changed: HashSet<_> = [PackageId::new("core")].into();
     let affected = dep_graph.affected_by(&changed);
     assert_eq!(affected.len(), 3);
 
     // If api changes, api + cli are affected
-    let changed: HashSet<_> = [PackageId("api".into())].into();
+    let changed: HashSet<_> = [PackageId::new("api")].into();
     let affected = dep_graph.affected_by(&changed);
     assert_eq!(affected.len(), 2);
-    assert!(affected.contains(&PackageId("api".into())));
-    assert!(affected.contains(&PackageId("cli".into())));
+    assert!(affected.contains(&PackageId::new("api")));
+    assert!(affected.contains(&PackageId::new("cli")));
 
     // If cli changes, only cli
-    let changed: HashSet<_> = [PackageId("cli".into())].into();
+    let changed: HashSet<_> = [PackageId::new("cli")].into();
     let affected = dep_graph.affected_by(&changed);
     assert_eq!(affected.len(), 1);
 }

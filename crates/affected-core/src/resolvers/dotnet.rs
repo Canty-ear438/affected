@@ -13,6 +13,7 @@ use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 /// Uses `glob` for solution file discovery, `regex` for parsing `.sln` project entries,
 /// and `quick-xml` for parsing `<ProjectReference>` elements from `.csproj`/`.fsproj`/`.vbproj` files.
 pub struct DotnetResolver;
+impl super::sealed::Sealed for DotnetResolver {}
 
 impl Resolver for DotnetResolver {
     fn ecosystem(&self) -> Ecosystem {

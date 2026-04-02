@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use crate::types::{PackageId, TestOutputJson, TestResultJson, TestSummaryJson};
 
+#[non_exhaustive]
 pub struct TestResult {
     pub package_id: PackageId,
     pub success: bool,
@@ -15,6 +16,7 @@ pub struct TestResult {
 }
 
 /// Configuration for creating a Runner.
+#[non_exhaustive]
 pub struct RunnerConfig {
     pub root: PathBuf,
     pub dry_run: bool,
@@ -24,6 +26,28 @@ pub struct RunnerConfig {
     pub quiet: bool,
 }
 
+impl RunnerConfig {
+    /// Create a new RunnerConfig with the given settings.
+    pub fn new(
+        root: PathBuf,
+        dry_run: bool,
+        timeout: Option<Duration>,
+        jobs: usize,
+        json: bool,
+        quiet: bool,
+    ) -> Self {
+        Self {
+            root,
+            dry_run,
+            timeout,
+            jobs,
+            json,
+            quiet,
+        }
+    }
+}
+
+#[non_exhaustive]
 pub struct Runner {
     root: PathBuf,
     dry_run: bool,
@@ -164,13 +188,16 @@ impl Runner {
                             println!("  Testing {}...", pkg_id);
                         }
                         let result = run_single_test_impl(root, timeout, &pkg_id, &args);
-                        results_ref.lock().unwrap().push(result);
+                        results_ref
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .push(result);
                     }
                 });
             }
         });
 
-        let mut out = results.into_inner().unwrap();
+        let mut out = results.into_inner().unwrap_or_else(|e| e.into_inner());
         out.sort_by(|a, b| a.package_id.0.cmp(&b.package_id.0));
         Ok(out)
     }
@@ -301,6 +328,20 @@ fn run_single_test_impl(
     }
 }
 
+/// Return an empty TestOutputJson (no packages affected).
+pub fn empty_test_output() -> TestOutputJson {
+    TestOutputJson {
+        affected: vec![],
+        results: vec![],
+        summary: TestSummaryJson {
+            passed: 0,
+            failed: 0,
+            total: 0,
+            duration_ms: 0,
+        },
+    }
+}
+
 /// Convert test results to JSON output format.
 pub fn results_to_json(affected: &[String], results: &[TestResult]) -> TestOutputJson {
     let total_duration: Duration = results.iter().map(|r| r.duration).sum();
@@ -379,6 +420,169 @@ fn escape_xml(s: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&apos;")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_runner(root: &Path, dry_run: bool, jobs: usize, timeout: Option<Duration>) -> Runner {
+        Runner::new(RunnerConfig {
+            root: root.to_path_buf(),
+            dry_run,
+            timeout,
+            jobs,
+            json: false,
+            quiet: true,
+        })
+    }
+
+    #[test]
+    fn test_sequential_execution() {
+        let dir = tempfile::tempdir().unwrap();
+        let runner = make_runner(dir.path(), false, 1, None);
+        let commands = vec![(
+            PackageId("pkg-a".into()),
+            vec!["echo".into(), "hello".into()],
+        )];
+        let results = runner.run_tests(commands).unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0].success);
+    }
+
+    #[test]
+    fn test_parallel_execution() {
+        let dir = tempfile::tempdir().unwrap();
+        let runner = make_runner(dir.path(), false, 2, None);
+        let commands = vec![
+            (PackageId("pkg-a".into()), vec!["echo".into(), "a".into()]),
+            (PackageId("pkg-b".into()), vec!["echo".into(), "b".into()]),
+            (PackageId("pkg-c".into()), vec!["echo".into(), "c".into()]),
+        ];
+        let results = runner.run_tests(commands).unwrap();
+        assert_eq!(results.len(), 3);
+        assert!(results.iter().all(|r| r.success));
+    }
+
+    #[test]
+    fn test_dry_run() {
+        let dir = tempfile::tempdir().unwrap();
+        let runner = make_runner(dir.path(), true, 1, None);
+        let commands = vec![(PackageId("pkg-a".into()), vec!["false".into()])];
+        let results = runner.run_tests(commands).unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0].success); // dry-run always succeeds
+        assert_eq!(results[0].duration, Duration::ZERO);
+    }
+
+    #[test]
+    fn test_dry_run_parallel() {
+        let dir = tempfile::tempdir().unwrap();
+        let runner = make_runner(dir.path(), true, 2, None);
+        let commands = vec![
+            (PackageId("pkg-a".into()), vec!["false".into()]),
+            (PackageId("pkg-b".into()), vec!["false".into()]),
+        ];
+        let results = runner.run_tests(commands).unwrap();
+        assert_eq!(results.len(), 2);
+        assert!(results.iter().all(|r| r.success));
+    }
+
+    #[test]
+    fn test_timeout_enforcement() {
+        let dir = tempfile::tempdir().unwrap();
+        let runner = make_runner(dir.path(), false, 1, Some(Duration::from_secs(1)));
+        let commands = vec![(PackageId("slow".into()), vec!["sleep".into(), "60".into()])];
+        let results = runner.run_tests(commands).unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(!results[0].success);
+        assert!(results[0].duration < Duration::from_secs(10));
+    }
+
+    #[test]
+    fn test_empty_commands() {
+        let dir = tempfile::tempdir().unwrap();
+        let runner = make_runner(dir.path(), false, 1, None);
+        let results = runner.run_tests(vec![]).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_empty_args_skipped() {
+        let dir = tempfile::tempdir().unwrap();
+        let runner = make_runner(dir.path(), false, 1, None);
+        let commands = vec![(PackageId("empty".into()), vec![])];
+        let results = runner.run_tests(commands).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_all_fail() {
+        let dir = tempfile::tempdir().unwrap();
+        let runner = make_runner(dir.path(), false, 1, None);
+        let commands = vec![
+            (PackageId("pkg-a".into()), vec!["false".into()]),
+            (PackageId("pkg-b".into()), vec!["false".into()]),
+        ];
+        let results = runner.run_tests(commands).unwrap();
+        assert_eq!(results.len(), 2);
+        assert!(results.iter().all(|r| !r.success));
+    }
+
+    #[test]
+    fn test_results_to_json_output() {
+        let results = vec![
+            TestResult {
+                package_id: PackageId("pkg-a".into()),
+                success: true,
+                exit_code: Some(0),
+                duration: Duration::from_millis(100),
+                output: None,
+            },
+            TestResult {
+                package_id: PackageId("pkg-b".into()),
+                success: false,
+                exit_code: Some(1),
+                duration: Duration::from_millis(200),
+                output: Some("error".into()),
+            },
+        ];
+        let json = results_to_json(&["pkg-a".into(), "pkg-b".into()], &results);
+        assert_eq!(json.summary.passed, 1);
+        assert_eq!(json.summary.failed, 1);
+        assert_eq!(json.summary.total, 2);
+        assert_eq!(json.results.len(), 2);
+        assert!(json.results[0].success);
+        assert!(!json.results[1].success);
+    }
+
+    #[test]
+    fn test_results_to_junit_output() {
+        let results = vec![
+            TestResult {
+                package_id: PackageId("pkg-ok".into()),
+                success: true,
+                exit_code: Some(0),
+                duration: Duration::from_millis(50),
+                output: None,
+            },
+            TestResult {
+                package_id: PackageId("pkg-fail".into()),
+                success: false,
+                exit_code: Some(1),
+                duration: Duration::from_millis(100),
+                output: Some("test failed".into()),
+            },
+        ];
+        let xml = results_to_junit(&results);
+        assert!(xml.contains("<?xml version=\"1.0\""));
+        assert!(xml.contains("tests=\"2\""));
+        assert!(xml.contains("failures=\"1\""));
+        assert!(xml.contains("name=\"pkg-ok\""));
+        assert!(xml.contains("name=\"pkg-fail\""));
+        assert!(xml.contains("<failure"));
+        assert!(xml.contains("test failed"));
+    }
 }
 
 /// Print a summary of test results.

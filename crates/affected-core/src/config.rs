@@ -6,6 +6,7 @@ use tracing::debug;
 
 use crate::types::{Ecosystem, PackageConfig};
 
+#[non_exhaustive]
 #[derive(Debug, Deserialize, Default)]
 pub struct Config {
     pub test: Option<TestConfig>,
@@ -13,6 +14,7 @@ pub struct Config {
     pub packages: Option<HashMap<String, PackageConfig>>,
 }
 
+#[non_exhaustive]
 #[derive(Debug, Deserialize, Default)]
 pub struct TestConfig {
     pub cargo: Option<String>,
@@ -94,7 +96,10 @@ impl Config {
             Some(patterns) => patterns.iter().any(|pat| {
                 glob::Pattern::new(pat)
                     .map(|p| p.matches(path))
-                    .unwrap_or(false)
+                    .unwrap_or_else(|e| {
+                        tracing::warn!("Invalid ignore pattern '{}': {}", pat, e);
+                        false
+                    })
             }),
             None => false,
         }

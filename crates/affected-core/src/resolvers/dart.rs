@@ -6,6 +6,7 @@ use crate::resolvers::{file_to_package, Resolver};
 use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 
 pub struct DartResolver;
+impl super::sealed::Sealed for DartResolver {}
 
 /// Which monorepo mode we detected.
 enum DartMode {

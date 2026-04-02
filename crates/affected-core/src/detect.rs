@@ -85,7 +85,15 @@ pub fn detect_ecosystems(root: &Path) -> Result<Vec<Ecosystem>> {
         // Scan one level deep for pyproject.toml files
         let pattern = root.join("*/pyproject.toml");
         if let Ok(paths) = glob::glob(pattern.to_str().unwrap_or("")) {
-            let count = paths.filter_map(|p| p.ok()).count();
+            let count = paths
+                .filter_map(|p| match p {
+                    Ok(path) => Some(path),
+                    Err(e) => {
+                        debug!("Glob error during Python detection: {}", e);
+                        None
+                    }
+                })
+                .count();
             if count >= 2 {
                 debug!(
                     "Detected Python monorepo ({} pyproject.toml files found)",
@@ -116,7 +124,13 @@ pub fn detect_ecosystems(root: &Path) -> Result<Vec<Ecosystem>> {
     // .NET: *.sln file at root
     let sln_pattern = root.join("*.sln");
     if let Ok(mut paths) = glob::glob(sln_pattern.to_str().unwrap_or("")) {
-        if paths.any(|p| p.is_ok()) {
+        if paths.any(|p| match p {
+            Ok(_) => true,
+            Err(e) => {
+                debug!("Glob error during .NET detection: {}", e);
+                false
+            }
+        }) {
             debug!("Detected .NET solution via *.sln");
             detected.push(Ecosystem::Dotnet);
         }
@@ -153,7 +167,15 @@ pub fn detect_ecosystems(root: &Path) -> Result<Vec<Ecosystem>> {
     if !detected.contains(&Ecosystem::Dart) {
         let pattern = root.join("*/pubspec.yaml");
         if let Ok(paths) = glob::glob(pattern.to_str().unwrap_or("")) {
-            let count = paths.filter_map(|p| p.ok()).count();
+            let count = paths
+                .filter_map(|p| match p {
+                    Ok(path) => Some(path),
+                    Err(e) => {
+                        debug!("Glob error during Dart detection: {}", e);
+                        None
+                    }
+                })
+                .count();
             if count >= 2 {
                 debug!(
                     "Detected Dart monorepo ({} pubspec.yaml files found)",

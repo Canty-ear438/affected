@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use crate::types::{PackageId, ProjectGraph};
 
 /// Dependency graph wrapper around petgraph.
+#[non_exhaustive]
 pub struct DepGraph {
     graph: DiGraph<PackageId, ()>,
     node_map: HashMap<PackageId, NodeIndex>,
@@ -144,7 +145,10 @@ impl DepGraph {
             }
         }
         for edge in self.graph.edge_indices() {
-            let (a, b) = self.graph.edge_endpoints(edge).unwrap();
+            let (a, b) = self
+                .graph
+                .edge_endpoints(edge)
+                .expect("edge from graph iteration must have endpoints");
             lines.push(format!(
                 "    \"{}\" -> \"{}\";",
                 self.graph[a], self.graph[b]
@@ -163,7 +167,10 @@ impl DepGraph {
     pub fn to_dot(&self) -> String {
         let mut lines = vec!["digraph dependencies {".to_string()];
         for edge in self.graph.edge_indices() {
-            let (a, b) = self.graph.edge_endpoints(edge).unwrap();
+            let (a, b) = self
+                .graph
+                .edge_endpoints(edge)
+                .expect("edge from graph iteration must have endpoints");
             lines.push(format!(
                 "    \"{}\" -> \"{}\";",
                 self.graph[a], self.graph[b]
@@ -178,7 +185,10 @@ impl DepGraph {
         self.graph
             .edge_indices()
             .map(|e| {
-                let (a, b) = self.graph.edge_endpoints(e).unwrap();
+                let (a, b) = self
+                    .graph
+                    .edge_endpoints(e)
+                    .expect("edge from graph iteration must have endpoints");
                 (&self.graph[a], &self.graph[b])
             })
             .collect()

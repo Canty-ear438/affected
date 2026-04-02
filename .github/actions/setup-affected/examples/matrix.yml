@@ -1,0 +1,36 @@
+# Dynamic matrix: each affected package runs as a separate parallel job
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.affected.outputs.matrix }}
+      has_affected: ${{ steps.affected.outputs.has_affected }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: Rani367/setup-affected@v1
+
+      - name: Detect affected packages
+        id: affected
+        run: affected ci --merge-base origin/main
+
+  test:
+    needs: detect
+    if: needs.detect.outputs.has_affected == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test ${{ matrix.package }}
+        run: cargo test -p ${{ matrix.package }}

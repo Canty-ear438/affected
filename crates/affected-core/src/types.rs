@@ -4,8 +4,26 @@ use std::fmt;
 use std::path::PathBuf;
 
 /// Unique identifier for a package within a project.
+#[non_exhaustive]
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct PackageId(pub String);
+pub struct PackageId(pub(crate) String);
+
+impl PackageId {
+    /// Create a new PackageId from a string.
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+
+    /// Return the package ID as a string slice.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Consume the PackageId and return the inner string.
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
 
 impl fmt::Display for PackageId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -14,6 +32,7 @@ impl fmt::Display for PackageId {
 }
 
 /// A single package/module discovered by a resolver.
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Package {
     pub id: PackageId,
@@ -26,6 +45,7 @@ pub struct Package {
 }
 
 /// The fully-resolved project graph returned by a resolver.
+#[non_exhaustive]
 #[derive(Debug)]
 pub struct ProjectGraph {
     pub packages: HashMap<PackageId, Package>,
@@ -35,6 +55,7 @@ pub struct ProjectGraph {
 }
 
 /// What kind of ecosystem was detected.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum Ecosystem {
     Cargo,
@@ -73,6 +94,7 @@ impl fmt::Display for Ecosystem {
 }
 
 /// An explanation of why a package was affected.
+#[non_exhaustive]
 #[derive(Debug, Serialize)]
 pub struct ExplainEntry {
     pub package: String,
@@ -80,6 +102,7 @@ pub struct ExplainEntry {
 }
 
 /// The reason a package is affected: either directly changed or transitively affected.
+#[non_exhaustive]
 #[derive(Debug, Serialize)]
 #[serde(tag = "type")]
 pub enum ExplainReason {
@@ -88,6 +111,7 @@ pub enum ExplainReason {
 }
 
 /// The result of the "affected" computation.
+#[non_exhaustive]
 #[derive(Debug, Serialize)]
 pub struct AffectedResult {
     pub affected: Vec<String>,
@@ -99,6 +123,7 @@ pub struct AffectedResult {
 }
 
 /// A single test result in JSON output format.
+#[non_exhaustive]
 #[derive(Debug, Serialize)]
 pub struct TestResultJson {
     pub package: String,
@@ -108,6 +133,7 @@ pub struct TestResultJson {
 }
 
 /// Summary of test results in JSON output format.
+#[non_exhaustive]
 #[derive(Debug, Serialize)]
 pub struct TestSummaryJson {
     pub passed: usize,
@@ -117,6 +143,7 @@ pub struct TestSummaryJson {
 }
 
 /// Full JSON output for test results.
+#[non_exhaustive]
 #[derive(Debug, Serialize)]
 pub struct TestOutputJson {
     pub affected: Vec<String>,
@@ -125,6 +152,7 @@ pub struct TestOutputJson {
 }
 
 /// Per-package configuration from `.affected.toml`.
+#[non_exhaustive]
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct PackageConfig {
     pub test: Option<String>,

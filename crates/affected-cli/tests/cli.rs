@@ -387,3 +387,199 @@ fn test_cli_help() {
         .success()
         .stdout(predicate::str::contains("Detect affected packages"));
 }
+
+// ─── Phase 5: New comprehensive tests ──────────────────────
+
+#[test]
+fn test_cli_list_filter() {
+    let dir = tempfile::tempdir().unwrap();
+    setup_cargo_workspace(dir.path());
+
+    // Make a change that affects both packages
+    std::fs::write(
+        dir.path().join("crates/core/src/lib.rs"),
+        "pub fn changed() {}\n",
+    )
+    .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change core");
+
+    affected_cmd()
+        .args(["list", "--base", "HEAD~1", "--filter", "core", "--root"])
+        .arg(dir.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("core"));
+}
+
+#[test]
+fn test_cli_list_skip() {
+    let dir = tempfile::tempdir().unwrap();
+    setup_cargo_workspace(dir.path());
+
+    std::fs::write(
+        dir.path().join("crates/core/src/lib.rs"),
+        "pub fn changed() {}\n",
+    )
+    .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change core");
+
+    let output = affected_cmd()
+        .args(["list", "--base", "HEAD~1", "--skip", "app", "--root"])
+        .arg(dir.path())
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("core"));
+    assert!(!stdout.contains("app"));
+}
+
+#[test]
+fn test_cli_invalid_filter_pattern() {
+    let dir = tempfile::tempdir().unwrap();
+    setup_cargo_workspace(dir.path());
+
+    std::fs::write(
+        dir.path().join("crates/core/src/lib.rs"),
+        "pub fn changed() {}\n",
+    )
+    .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change core");
+
+    affected_cmd()
+        .args(["list", "--base", "HEAD~1", "--filter", "[invalid", "--root"])
+        .arg(dir.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Invalid filter pattern"));
+}
+
+#[test]
+fn test_cli_invalid_skip_pattern() {
+    let dir = tempfile::tempdir().unwrap();
+    setup_cargo_workspace(dir.path());
+
+    std::fs::write(
+        dir.path().join("crates/core/src/lib.rs"),
+        "pub fn changed() {}\n",
+    )
+    .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change core");
+
+    affected_cmd()
+        .args(["list", "--base", "HEAD~1", "--skip", "[invalid", "--root"])
+        .arg(dir.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Invalid skip pattern"));
+}
+
+#[test]
+fn test_cli_init_non_interactive() {
+    let dir = tempfile::tempdir().unwrap();
+    setup_cargo_workspace(dir.path());
+
+    affected_cmd()
+        .args(["init", "--non-interactive", "--root"])
+        .arg(dir.path())
+        .assert()
+        .success();
+
+    // Verify config file was created
+    assert!(dir.path().join(".affected.toml").exists());
+
+    // Verify it contains expected TOML content
+    let content = std::fs::read_to_string(dir.path().join(".affected.toml")).unwrap();
+    assert!(
+        content.contains("[test]") || content.contains("ignore"),
+        "generated config should contain TOML sections"
+    );
+}
+
+#[test]
+fn test_cli_completions_bash() {
+    affected_cmd()
+        .args(["completions", "bash"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("complete"));
+}
+
+#[test]
+fn test_cli_completions_zsh() {
+    affected_cmd()
+        .args(["completions", "zsh"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("compdef"));
+}
+
+#[test]
+fn test_cli_graph_with_base() {
+    let dir = tempfile::tempdir().unwrap();
+    setup_cargo_workspace(dir.path());
+
+    std::fs::write(
+        dir.path().join("crates/core/src/lib.rs"),
+        "pub fn changed() {}\n",
+    )
+    .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change core");
+
+    affected_cmd()
+        .args(["graph", "--base", "HEAD~1", "--root"])
+        .arg(dir.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Dependency Graph"));
+}
+
+#[test]
+fn test_cli_list_json_structure() {
+    let dir = tempfile::tempdir().unwrap();
+    setup_cargo_workspace(dir.path());
+
+    std::fs::write(
+        dir.path().join("crates/core/src/lib.rs"),
+        "pub fn changed() {}\n",
+    )
+    .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change core");
+
+    let output = affected_cmd()
+        .args(["list", "--base", "HEAD~1", "--json", "--root"])
+        .arg(dir.path())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).expect("valid JSON");
+    assert!(json["affected"].is_array());
+    assert!(json["base"].is_string());
+    assert!(json["changed_files"].is_number());
+    assert!(json["total_packages"].is_number());
+}
+
+#[test]
+fn test_cli_ci_gitlab_format() {
+    let dir = tempfile::tempdir().unwrap();
+    setup_cargo_workspace(dir.path());
+
+    std::fs::write(
+        dir.path().join("crates/core/src/lib.rs"),
+        "pub fn changed() {}\n",
+    )
+    .unwrap();
+    git(dir.path(), &["add", "-A"]);
+    git_commit(dir.path(), "change core");
+
+    affected_cmd()
+        .args(["ci", "--format", "gitlab", "--base", "HEAD~1", "--root"])
+        .arg(dir.path())
+        .assert()
+        .success();
+}

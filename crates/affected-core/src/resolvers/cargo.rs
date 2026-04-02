@@ -8,6 +8,7 @@ use crate::resolvers::{file_to_package, Resolver};
 use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 
 pub struct CargoResolver;
+impl super::sealed::Sealed for CargoResolver {}
 
 #[derive(Deserialize)]
 struct CargoMetadata {

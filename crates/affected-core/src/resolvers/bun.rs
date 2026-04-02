@@ -7,6 +7,7 @@ use crate::resolvers::{file_to_package, Resolver};
 use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 
 pub struct BunResolver;
+impl super::sealed::Sealed for BunResolver {}
 
 #[derive(Deserialize)]
 struct RootPackageJson {

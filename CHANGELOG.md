@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.0.0] - 2026-04-02
+
+### Breaking Changes
+
+- All public structs and enums are now `#[non_exhaustive]` — external code must use constructors instead of struct literals
+- `PackageId` inner field is no longer public; use `PackageId::new()`, `.as_str()`, `.into_inner()`
+- `Resolver` trait is now sealed and cannot be implemented outside of `affected-core`
+- Invalid `--filter`/`--skip` glob patterns now return errors instead of being silently ignored
+- `RunnerConfig` must be constructed via `RunnerConfig::new()` instead of struct literal
+
+### Added
+
+- `PackageId::new()`, `PackageId::as_str()`, `PackageId::into_inner()` accessor methods
+- `RunnerConfig::new()` and `empty_test_output()` constructors
+- Warning logs for invalid glob patterns in ignore config
+- Debug logging for glob iteration errors during ecosystem detection
+- `cargo audit` security scanning in CI pipeline
+- Comprehensive unit tests for runner (sequential, parallel, timeout, dry-run, JSON, JUnit)
+- Comprehensive unit tests for git module (committed, uncommitted, merge-base, error cases)
+- 10 new CLI integration tests (filter, skip, invalid patterns, init, completions, graph, JSON, CI formats)
+
+### Fixed
+
+- Mutex lock poisoning in parallel test execution no longer panics — uses graceful recovery
+- Graph edge endpoint unwraps replaced with descriptive expect messages
+
 ## [0.3.0] - 2026-03-30
 
 ### Added

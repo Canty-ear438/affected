@@ -1,0 +1,25 @@
+# Custom commands: run lint, build, and test on affected packages
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  affected:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: Rani367/setup-affected@v1
+
+      - name: Lint affected packages
+        run: affected run "cargo clippy -p {package} -- -D warnings" --merge-base origin/main --jobs 4
+
+      - name: Build affected packages
+        run: affected run "cargo build -p {package}" --merge-base origin/main --jobs 4
+
+      - name: Test affected packages
+        run: affected test --merge-base origin/main --jobs 4

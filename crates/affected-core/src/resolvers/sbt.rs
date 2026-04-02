@@ -10,6 +10,7 @@ use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 ///
 /// Uses regex to parse `lazy val` project declarations and `.dependsOn()` dependency references.
 pub struct SbtResolver;
+impl super::sealed::Sealed for SbtResolver {}
 
 impl Resolver for SbtResolver {
     fn ecosystem(&self) -> Ecosystem {

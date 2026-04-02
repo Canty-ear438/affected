@@ -3,6 +3,10 @@ use std::path::Path;
 
 use crate::types::{Ecosystem, PackageId, ProjectGraph};
 
+pub(crate) mod sealed {
+    pub trait Sealed {}
+}
+
 pub mod bun;
 pub mod cargo;
 pub mod dart;
@@ -18,7 +22,9 @@ pub mod swift;
 pub mod yarn;
 
 /// Trait implemented by each ecosystem resolver.
-pub trait Resolver {
+///
+/// This trait is sealed and cannot be implemented outside of this crate.
+pub trait Resolver: sealed::Sealed {
     /// Which ecosystem this resolver handles.
     fn ecosystem(&self) -> Ecosystem;
 

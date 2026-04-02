@@ -11,6 +11,7 @@ use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 /// Parsing is the same as npm (package.json workspaces) but test commands use `yarn`.
 /// Detection: `.yarnrc.yml` exists at root (takes priority over NpmResolver).
 pub struct YarnResolver;
+impl super::sealed::Sealed for YarnResolver {}
 
 #[derive(Deserialize)]
 struct RootPackageJson {

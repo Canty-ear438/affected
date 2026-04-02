@@ -7,6 +7,7 @@ use crate::resolvers::{file_to_package, Resolver};
 use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 
 pub struct NpmResolver;
+impl super::sealed::Sealed for NpmResolver {}
 
 #[derive(Deserialize)]
 struct RootPackageJson {

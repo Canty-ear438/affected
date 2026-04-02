@@ -10,6 +10,7 @@ use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 ///
 /// Uses regex to parse `include` directives and `project(':...')` dependency references.
 pub struct GradleResolver;
+impl super::sealed::Sealed for GradleResolver {}
 
 impl Resolver for GradleResolver {
     fn ecosystem(&self) -> Ecosystem {

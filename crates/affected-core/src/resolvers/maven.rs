@@ -12,6 +12,7 @@ use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 /// Uses `quick-xml` for XML parsing. Walks the XML events manually to extract
 /// `<modules>/<module>`, `<groupId>`, `<artifactId>`, and `<dependencies>/<dependency>`.
 pub struct MavenResolver;
+impl super::sealed::Sealed for MavenResolver {}
 
 impl Resolver for MavenResolver {
     fn ecosystem(&self) -> Ecosystem {

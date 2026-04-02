@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "affected"
-version = "0.3.0"
+version = "1.0.0"
 description = "Detect affected packages. Run only what matters. Language-agnostic monorepo tool."
 readme = "../../README.md"
 license = "MIT"
@@ -12,7 +12,7 @@ requires-python = ">=3.8"
 authors = [{ name = "Rani367" }]
 keywords = ["monorepo", "testing", "ci", "affected", "workspace"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",

@@ -11,6 +11,7 @@ use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 /// Uses regex to parse `Package.swift` manifests for `.target(`, `.executableTarget(`,
 /// and `.testTarget(` declarations and their dependency arrays.
 pub struct SwiftResolver;
+impl super::sealed::Sealed for SwiftResolver {}
 
 impl Resolver for SwiftResolver {
     fn ecosystem(&self) -> Ecosystem {

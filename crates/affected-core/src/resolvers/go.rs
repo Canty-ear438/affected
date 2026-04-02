@@ -7,6 +7,7 @@ use crate::resolvers::{file_to_package, Resolver};
 use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 
 pub struct GoResolver;
+impl super::sealed::Sealed for GoResolver {}
 
 impl Resolver for GoResolver {
     fn ecosystem(&self) -> Ecosystem {

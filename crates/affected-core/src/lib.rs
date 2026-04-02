@@ -122,18 +122,18 @@ pub fn find_affected_with_options(
 
     // Apply filter (include only matching)
     if let Some(filter_pattern) = filter {
-        if let Ok(pat) = glob::Pattern::new(filter_pattern) {
-            debug!("Applying filter pattern: {}", filter_pattern);
-            affected_names.retain(|name| pat.matches(name));
-        }
+        let pat = glob::Pattern::new(filter_pattern)
+            .with_context(|| format!("Invalid filter pattern '{filter_pattern}'"))?;
+        debug!("Applying filter pattern: {}", filter_pattern);
+        affected_names.retain(|name| pat.matches(name));
     }
 
     // Apply skip (exclude matching)
     if let Some(skip_pattern) = skip {
-        if let Ok(pat) = glob::Pattern::new(skip_pattern) {
-            debug!("Applying skip pattern: {}", skip_pattern);
-            affected_names.retain(|name| !pat.matches(name));
-        }
+        let pat = glob::Pattern::new(skip_pattern)
+            .with_context(|| format!("Invalid skip pattern '{skip_pattern}'"))?;
+        debug!("Applying skip pattern: {}", skip_pattern);
+        affected_names.retain(|name| !pat.matches(name));
     }
 
     Ok(AffectedResult {

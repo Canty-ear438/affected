@@ -480,16 +480,7 @@ fn cmd_test(
             println!("{}", "No packages affected.".dimmed());
         }
         if json {
-            let empty = affected_core::types::TestOutputJson {
-                affected: vec![],
-                results: vec![],
-                summary: affected_core::types::TestSummaryJson {
-                    passed: 0,
-                    failed: 0,
-                    total: 0,
-                    duration_ms: 0,
-                },
-            };
+            let empty = affected_core::runner::empty_test_output();
             println!("{}", serde_json::to_string_pretty(&empty)?);
         }
         return Ok(());
@@ -523,7 +514,7 @@ fn cmd_test(
                 .unwrap_or(false)
         })
         .map(|name| {
-            let pkg_id = affected_core::types::PackageId(name.clone());
+            let pkg_id = affected_core::types::PackageId::new(name.clone());
             // Priority: per-package config > ecosystem config > resolver default
             let cmd = config
                 .package_config(name)
@@ -541,14 +532,14 @@ fn cmd_test(
         .collect();
 
     let timeout_dur = timeout.map(std::time::Duration::from_secs);
-    let runner = affected_core::runner::Runner::new(affected_core::runner::RunnerConfig {
-        root: root.to_path_buf(),
+    let runner = affected_core::runner::Runner::new(affected_core::runner::RunnerConfig::new(
+        root.to_path_buf(),
         dry_run,
-        timeout: timeout_dur,
+        timeout_dur,
         jobs,
         json,
         quiet,
-    });
+    ));
 
     let results = runner.run_tests(commands)?;
 
@@ -597,16 +588,7 @@ fn cmd_run(
             println!("{}", "No packages affected.".dimmed());
         }
         if json {
-            let empty = affected_core::types::TestOutputJson {
-                affected: vec![],
-                results: vec![],
-                summary: affected_core::types::TestSummaryJson {
-                    passed: 0,
-                    failed: 0,
-                    total: 0,
-                    duration_ms: 0,
-                },
-            };
+            let empty = affected_core::runner::empty_test_output();
             println!("{}", serde_json::to_string_pretty(&empty)?);
         }
         return Ok(());
@@ -630,7 +612,7 @@ fn cmd_run(
         .affected
         .iter()
         .map(|name| {
-            let pkg_id = affected_core::types::PackageId(name.clone());
+            let pkg_id = affected_core::types::PackageId::new(name.clone());
             let cmd: Vec<String> = command_template
                 .replace("{package}", name)
                 .split_whitespace()
@@ -641,14 +623,14 @@ fn cmd_run(
         .collect();
 
     let timeout_dur = timeout.map(std::time::Duration::from_secs);
-    let runner = affected_core::runner::Runner::new(affected_core::runner::RunnerConfig {
-        root: root.to_path_buf(),
+    let runner = affected_core::runner::Runner::new(affected_core::runner::RunnerConfig::new(
+        root.to_path_buf(),
         dry_run,
-        timeout: timeout_dur,
+        timeout_dur,
         jobs,
         json,
         quiet,
-    });
+    ));
 
     let results = runner.run_tests(commands)?;
 
@@ -723,7 +705,7 @@ fn cmd_graph(root: &std::path::Path, dot: bool, base: Option<&str>) -> Result<()
             cycles.len()
         );
         for cycle in &cycles {
-            let names: Vec<_> = cycle.iter().map(|p| p.0.as_str()).collect();
+            let names: Vec<_> = cycle.iter().map(|p| p.as_str()).collect();
             eprintln!("  {} {}", "⟳".yellow(), names.join(" → "));
         }
         eprintln!();
@@ -745,7 +727,11 @@ fn cmd_graph(root: &std::path::Path, dot: bool, base: Option<&str>) -> Result<()
     // Build adjacency list: package -> list of packages it depends on
     let edges = dep_graph.edges();
     let all_packages: Vec<String> = {
-        let mut names: Vec<_> = project_graph.packages.keys().map(|k| k.0.clone()).collect();
+        let mut names: Vec<_> = project_graph
+            .packages
+            .keys()
+            .map(|k| k.as_str().to_string())
+            .collect();
         names.sort();
         names
     };
@@ -1281,6 +1267,7 @@ fn print_explanations(result: &affected_core::types::AffectedResult) {
                         format!("(depends on: {})", chain.join(" → ")).dimmed()
                     );
                 }
+                _ => {}
             }
         }
     }

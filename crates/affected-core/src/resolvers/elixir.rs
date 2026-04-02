@@ -10,6 +10,7 @@ use crate::types::{Ecosystem, Package, PackageId, ProjectGraph};
 ///
 /// Scans `apps/*/mix.exs` to discover sub-applications and their umbrella dependencies.
 pub struct ElixirResolver;
+impl super::sealed::Sealed for ElixirResolver {}
 
 impl Resolver for ElixirResolver {
     fn ecosystem(&self) -> Ecosystem {
