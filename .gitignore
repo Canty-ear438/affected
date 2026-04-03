@@ -1,2 +1,7 @@
 /target
 ci.env
+
+# Next.js docs site
+docs/node_modules/
+docs/.next/
+docs/out/
