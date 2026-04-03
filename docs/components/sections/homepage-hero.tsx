@@ -7,7 +7,7 @@ export const HomepageHero = () => (
   <Hero>
     <Button
       className="translate-y-[-1rem] animate-fade-in opacity-0"
-      href="/"
+      href="#ecosystems"
       variant="secondary"
       size="small"
     >

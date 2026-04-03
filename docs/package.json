@@ -13,7 +13,8 @@
     "next": "^13.1.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "react-intersection-observer": "^9.4.1"
+    "react-intersection-observer": "^9.4.1",
+    "simple-icons": "^16.14.0"
   },
   "devDependencies": {
     "@types/js-cookie": "^3.0.2",

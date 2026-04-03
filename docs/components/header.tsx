@@ -57,19 +57,19 @@ export const Header = () => {
               )}
             >
               <li>
-                <Link href="#">Features</Link>
+                <Link href="#features">Features</Link>
               </li>
               <li>
-                <Link href="#">Ecosystems</Link>
+                <Link href="#ecosystems">Ecosystems</Link>
               </li>
               <li className="md:hidden lg:block">
-                <Link href="#">How It Works</Link>
+                <Link href="#how-it-works">How It Works</Link>
               </li>
               <li className="md:hidden lg:block">
-                <Link href="#">Compare</Link>
+                <Link href="#compare">Compare</Link>
               </li>
               <li>
-                <Link href="#">Install</Link>
+                <Link href="#install">Install</Link>
               </li>
             </ul>
           </nav>

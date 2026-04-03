@@ -9,7 +9,7 @@ const footerLinks = [
       { title: "Features", href: "#" },
       { title: "Ecosystems", href: "#" },
       { title: "Install", href: "#" },
-      { title: "Changelog", href: "#" },
+      { title: "Changelog", href: "https://github.com/Rani367/affected/releases" },
       { title: "GitHub", href: "https://github.com/Rani367/affected" },
     ],
   },
