@@ -1,8 +1,38 @@
 "use client";
 
+import { useState } from "react";
 import { Features } from "../features";
 import { Container } from "../container";
 import { Button } from "../button";
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="ml-auto shrink-0 rounded-md p-1.5 text-grey transition-colors hover:text-white"
+      aria-label="Copy to clipboard"
+    >
+      {copied ? (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="2,8 6,12 14,4" />
+        </svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="5" y="5" width="9" height="9" rx="1.5" />
+          <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+        </svg>
+      )}
+    </button>
+  );
+}
 
 const installMethods = [
   {
@@ -45,9 +75,10 @@ export const SetDirection = () => {
               className="relative overflow-hidden rounded-[2.4rem] border border-transparent-white bg-[radial-gradient(ellipse_at_center,rgba(var(--feature-color),0.15),transparent)] py-6 px-8 before:pointer-events-none before:absolute before:inset-0 before:bg-glass-gradient md:rounded-[4.8rem] md:p-14"
             >
               <h3 className="mb-4 text-2xl text-white">{title}</h3>
-              <div className="rounded-[0.8rem] border border-transparent-white bg-[rgba(255,255,255,0.03)] px-5 py-4 font-mono text-sm text-primary-text">
+              <div className="flex items-center rounded-[0.8rem] border border-transparent-white bg-[rgba(255,255,255,0.03)] px-5 py-4 font-mono text-sm text-primary-text">
                 <span className="mr-2 select-none text-grey">$</span>
                 <span className="text-white">{command}</span>
+                <CopyButton text={command} />
               </div>
             </div>
           ))}

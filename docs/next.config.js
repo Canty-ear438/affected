@@ -2,8 +2,8 @@
 const nextConfig = {
   output: "export",
   images: { unoptimized: true },
-  basePath: "/affected",
-  assetPrefix: "/affected",
+  basePath: process.env.NODE_ENV === "production" ? "/affected" : "",
+  assetPrefix: process.env.NODE_ENV === "production" ? "/affected" : "",
 };
 
 module.exports = nextConfig;
