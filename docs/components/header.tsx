@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "./button";
 import { Container } from "./container";
 import { HamburgerIcon } from "./icons/hamburger";
+import { handleAnchorClick } from "../lib/smooth-scroll";
 import classNames from "classnames";
 
 export const Header = () => {
@@ -30,7 +31,7 @@ export const Header = () => {
   return (
     <header className="fixed top-0 left-0 z-10 w-full border-b border-transparent-white backdrop-blur-[12px]">
       <Container className="flex h-navigation-height">
-        <Link className="flex items-center text-md font-mono" href="/">
+        <Link className="flex items-center text-md font-mono" href="/" onClick={(e) => handleAnchorClick(e, "/")}>
           affected
           <span className="inline-block w-[2px] h-[1.4rem] bg-white ml-1 animate-[cursor-blink_1s_step-end_infinite]" />
         </Link>
@@ -57,19 +58,19 @@ export const Header = () => {
               )}
             >
               <li>
-                <Link href="#features">Features</Link>
+                <Link href="#features" onClick={(e) => handleAnchorClick(e, "#features")}>Features</Link>
               </li>
               <li>
-                <Link href="#ecosystems">Ecosystems</Link>
+                <Link href="#ecosystems" onClick={(e) => handleAnchorClick(e, "#ecosystems")}>Ecosystems</Link>
               </li>
               <li className="md:hidden lg:block">
-                <Link href="#how-it-works">How It Works</Link>
+                <Link href="#how-it-works" onClick={(e) => handleAnchorClick(e, "#how-it-works")}>How It Works</Link>
               </li>
               <li className="md:hidden lg:block">
-                <Link href="#compare">Compare</Link>
+                <Link href="#compare" onClick={(e) => handleAnchorClick(e, "#compare")}>Compare</Link>
               </li>
               <li>
-                <Link href="#install">Install</Link>
+                <Link href="#install" onClick={(e) => handleAnchorClick(e, "#install")}>Install</Link>
               </li>
             </ul>
           </nav>

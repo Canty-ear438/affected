@@ -11,7 +11,7 @@ type FeaturesProps = {
 };
 
 export const Features = ({ children, color, colorDark }: FeaturesProps) => {
-  const { ref, inView } = useInView({ threshold: 0.2, triggerOnce: false });
+  const { ref, inView } = useInView({ threshold: 0.2, triggerOnce: true });
 
   return (
     <section

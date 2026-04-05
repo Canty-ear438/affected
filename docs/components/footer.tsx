@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { Container } from "./container";
 import { GithubIcon } from "./icons/github";
+import { handleAnchorClick } from "../lib/smooth-scroll";
 
 const footerLinks = [
   {
@@ -52,6 +55,7 @@ export const Footer = () => (
                   <Link
                     className="mb-3 block text-grey transition-colors hover:text-off-white"
                     href={link.href}
+                    onClick={(e) => handleAnchorClick(e, link.href)}
                   >
                     {link.title}
                   </Link>

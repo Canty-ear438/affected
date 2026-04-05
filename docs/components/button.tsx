@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { cva, VariantProps } from "class-variance-authority";
 import { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
 import classNames from "classnames";
+import { handleAnchorClick } from "../lib/smooth-scroll";
 
 type ButtonBaseProps = VariantProps<typeof buttonClasses> & {
   children: React.ReactNode;
@@ -57,7 +60,14 @@ export const Button = ({ children, variant, size, ...props }: ButtonProps) => {
 
   if ("href" in props && props.href !== undefined) {
     return (
-      <Link {...props} className={classes}>
+      <Link
+        {...props}
+        className={classes}
+        onClick={(e) => {
+          props.onClick?.(e);
+          handleAnchorClick(e, props.href);
+        }}
+      >
         {children}
       </Link>
     );
